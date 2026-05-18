@@ -11,7 +11,8 @@ Este é um servidor [Model Context Protocol (MCP)](https://modelcontextprotocol.
 
 ## Pré-requisitos
 - .NET 10 SDK instalado.
-- Credenciais de acesso ao MantisBT (Usuário e Senha).
+- Ferramenta de Proxy instalada: `dotnet tool install -g dotnet-svcutil`
+- Credenciais de acesso ao MantisBT (Usuário e Token de API).
 
 ## Instalação Rápida (Recomendado)
 Para facilitar o build e a configuração em diferentes CLIs, execute o script de setup no PowerShell:
@@ -20,9 +21,10 @@ Para facilitar o build e a configuração em diferentes CLIs, execute o script d
 .\install.ps1
 ```
 O script irá:
-1. Compilar o projeto automaticamente.
-2. Solicitar suas credenciais de forma segura.
-3. Oferecer opções para instalar no **Gemini CLI**, **Claude Code** ou gerar o JSON para o **Claude Desktop**.
+1. Gerar o Proxy SOAP localmente (corrigindo problemas de encoding do MantisBT).
+2. Compilar o projeto automaticamente.
+3. Solicitar suas credenciais de forma segura.
+4. Oferecer opções para instalar no **Gemini CLI**, **Claude Code** ou gerar o JSON para o **Claude Desktop**.
 
 ---
 
