@@ -8,13 +8,20 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Serilog;
 using Serilog.Events;
+using System.Net.Http.Json;
+using System.Reflection;
 
 namespace MantisMcpServer
 {
     class Program
     {
+        private const string RepoOwner = "eduardoalba";
+        private const string RepoName = "mantisbt-mcp";
+
         static async Task Main(string[] args)
         {
+            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+
             // Configuração do Serilog
             var logPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -35,7 +42,10 @@ namespace MantisMcpServer
 
             try 
             {
-                Log.Information("Iniciando MantisBT MCP Server...");
+                Log.Information("Iniciando MantisBT MCP Server v{Version}...", version);
+
+                // Verificação de atualização em background
+                _ = Task.Run(() => CheckForUpdates(version));
 
                 // Importante: Usar EmptyApplicationBuilder para não poluir o STDOUT com logs padrão
                 var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { Args = args });
@@ -64,7 +74,7 @@ namespace MantisMcpServer
                     options.ServerInfo = new Implementation 
                     { 
                         Name = "MantisBT-SOAP-MCP", 
-                        Version = "1.0.0" 
+                        Version = version 
                     };
                 })
                 .WithStdioServerTransport() 
@@ -82,6 +92,35 @@ namespace MantisMcpServer
                 await Log.CloseAndFlushAsync();
             }
         }
+
+        private static async Task CheckForUpdates(string currentVersion)
+        {
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("MantisBT-MCP-Server");
+                
+                var latestRelease = await client.GetFromJsonAsync<GitHubRelease>(
+                    $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases/latest");
+
+                if (latestRelease != null && !string.IsNullOrEmpty(latestRelease.TagName))
+                {
+                    var latestVersion = latestRelease.TagName.TrimStart('v');
+                    if (latestVersion != currentVersion)
+                    {
+                        var msg = $"UPDATE AVAILABLE: A new version (v{latestVersion}) of MantisBT MCP is available at GitHub! You are currently on v{currentVersion}. Please run the install.ps1 to update.";
+                        Log.Warning(msg);
+                        // Emitir no STDERR para a IA e usuário verem
+                        Console.Error.WriteLine($"\n[UPDATE] {msg}\n");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Falha ao verificar atualizações no GitHub.");
+            }
+        }
+
+        private record GitHubRelease(string TagName);
     }
 }
-
