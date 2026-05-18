@@ -178,6 +178,11 @@ foreach ($choice in $selectedChoices) {
             $claudeConfigPath = "$env:AppData\Claude\claude_desktop_config.json"
             $claudeDir = Split-Path $claudeConfigPath
             
+            if (-not (Test-Path $claudeDir)) {
+                Write-Warning "Claude Desktop directory not found at $claudeDir. Skipping this installation target."
+                continue
+            }
+
             $serverObj = @{
                 "command" = $exePath.Replace("\", "/")
                 "args" = @()
@@ -185,11 +190,6 @@ foreach ($choice in $selectedChoices) {
             }
 
             try {
-                if (-not (Test-Path $claudeDir)) {
-                    Write-Host "Creating directory: $claudeDir" -ForegroundColor Gray
-                    New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null
-                }
-
                 if (Test-Path $claudeConfigPath) {
                     $config = Get-Content $claudeConfigPath -Raw | ConvertFrom-Json
                 } else {
