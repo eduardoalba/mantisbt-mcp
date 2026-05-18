@@ -9,8 +9,6 @@
 *.sln.docstates
 
 # Logs and Temp
-erro.txt
-install_log.txt
 temp_mantis.wsdl
 
 # Secrets
