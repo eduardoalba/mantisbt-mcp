@@ -3,6 +3,9 @@
 
 $ErrorActionPreference = "Stop"
 
+$repoOwner = "eduardoalba"
+$repoName = "mantisbt-mcp"
+
 Write-Host "--- MantisBT MCP Server Configuration ---" -ForegroundColor Cyan
 
 # 0. Check for pre-compiled binary (User Mode)
@@ -16,19 +19,49 @@ if (Test-Path $binaryInRoot) {
 } elseif (Test-Path $binaryInBuild) {
     $exePath = (Get-Item $binaryInBuild).FullName
     Write-Host "[INFO] Compiled binary detected. Skipping build." -ForegroundColor Green
+} else {
+    Write-Host "`n[?] Binary not found locally. Would you like to download the latest release from GitHub? (Y/N)" -ForegroundColor Yellow
+    $downloadChoice = Read-Host "Default is Y"
+    if ($downloadChoice -ne "N" -and $downloadChoice -ne "n") {
+        try {
+            Write-Host "Fetching latest release info from GitHub..." -ForegroundColor Gray
+            $uri = "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
+            $releaseInfo = Invoke-RestMethod -Uri $uri -UseBasicParsing
+            $asset = $releaseInfo.assets | Where-Object { $_.name -like "*-Win64.zip" } | Select-Object -First 1
+            
+            if ($null -eq $asset) { throw "Could not find a valid Win64.zip asset in the latest release." }
+            
+            $zipPath = Join-Path (Get-Location) "MantisMcpServer-Latest.zip"
+            Write-Host "Downloading version $($releaseInfo.tag_name)..." -ForegroundColor Cyan
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath -UseBasicParsing
+            
+            Write-Host "Extracting files..." -ForegroundColor Gray
+            Expand-Archive -Path $zipPath -DestinationPath (Get-Location) -Force
+            Remove-Item $zipPath
+            
+            if (Test-Path $binaryInRoot) {
+                $exePath = (Get-Item $binaryInRoot).FullName
+                Write-Host "[Success] Latest version downloaded and extracted!" -ForegroundColor Green
+            }
+        } catch {
+            Write-Warning "Failed to download from GitHub: $_"
+            Write-Host "Falling back to Developer mode (Build required)..." -ForegroundColor Gray
+        }
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($exePath)) {
-    Write-Host "`n[DEBUG] Binary not found. Starting Developer mode (Build required)..." -ForegroundColor Gray
+    Write-Host "`n[DEBUG] Proceeding to Developer mode (Build required)..." -ForegroundColor Gray
     
     # 1. Check .NET SDK and dotnet-svcutil
     try {
         $dotnetVersion = dotnet --version
         Write-Host "[OK] .NET SDK detected (v$dotnetVersion)" -ForegroundColor Green
     } catch {
-        Write-Error ".NET SDK not found. If you are an end-user, please download the .exe from the official release."
+        Write-Error ".NET SDK not found. Please install the .NET 10 SDK or ensure you are running this script in a folder with MantisMcpServer.exe."
         exit
     }
+
 
     # 2. Collect URL for Proxy Generation
     Write-Host "`n[1/3] Initial Configuration" -ForegroundColor Yellow
