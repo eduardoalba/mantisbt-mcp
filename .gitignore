@@ -18,6 +18,4 @@ appsettings.json
 appsettings.Development.json
 .gemini/settings.json
 
-# Auto-generated SOAP Proxy
-MantisMcpServer/ServiceProxy/
 
