@@ -32,44 +32,31 @@ if (-not (Test-Path $proxyPath)) { New-Item -ItemType Directory -Path $proxyPath
 
 try {
     Write-Host "Baixando e corrigindo encoding do WSDL..." -ForegroundColor Gray
+    # MantisBT costuma declarar ISO-8859-1 mas enviar UTF-8, o que quebra o dotnet-svcutil.
     $response = Invoke-WebRequest -Uri $wsdlUrl -UseBasicParsing
     $wsdlContent = $response.Content
-    
-    # Uso do operador -replace (case-insensitive) para garantir que pegue 'ISO-8859-1' ou 'iso-8859-1'
     $wsdlContent = $wsdlContent -replace 'encoding="ISO-8859-1"', 'encoding="UTF-8"'
     
-    # Salva usando UTF8 sem BOM para evitar problemas com o parser
     $absoluteTempPath = Join-Path (Get-Location) $tempWsdl
     [System.IO.File]::WriteAllText($absoluteTempPath, $wsdlContent, [System.Text.Encoding]::UTF8)
     
     Write-Host "Executando: dotnet-svcutil `"$absoluteTempPath`" ..." -ForegroundColor Gray
     $env:DOTNET_SVCUTIL_TELEMETRY_OPTOUT = 1
     
-    # Resolve o caminho absoluto da pasta de destino
     $absoluteProxyPath = (Get-Item $proxyPath).FullName
-
-    # Remove arquivos anteriores se existirem para evitar erro de 'file already exists'
     $oldReference = Join-Path $absoluteProxyPath "Reference.cs"
     $oldParams = Join-Path $absoluteProxyPath "dotnet-svcutil.params.json"
     if (Test-Path $oldReference) { Remove-Item $oldReference -Force }
     if (Test-Path $oldParams) { Remove-Item $oldParams -Force }
 
-    # Executa e captura saída completa
     dotnet-svcutil "$absoluteTempPath" -o Reference.cs -d "$absoluteProxyPath" -n "*,MantisService" --noLogo
     
-    if ($LASTEXITCODE -ne 0) { 
-        Write-Error "O comando dotnet-svcutil falhou."
-        throw "dotnet-svcutil retornou código de erro $LASTEXITCODE" 
-    }
+    if ($LASTEXITCODE -ne 0) { throw "dotnet-svcutil falhou com código $LASTEXITCODE" }
     
     Remove-Item $absoluteTempPath -ErrorAction SilentlyContinue
     Write-Host "[OK] Proxy SOAP gerado com sucesso." -ForegroundColor Green
 } catch {
     Write-Error "Erro detalhado: $_"
-    if (Test-Path $tempWsdl) { 
-        Write-Host "`n--- Conteúdo do WSDL baixado (primeiras 5 linhas) ---" -ForegroundColor Gray
-        Get-Content $tempWsdl -TotalCount 5
-    }
     Remove-Item $tempWsdl -ErrorAction SilentlyContinue
     exit
 }
@@ -82,7 +69,6 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error "Falha na compilação do projeto."
     exit
 }
-# Localiza o executável gerado
 $exePath = (Get-Item "bin\Release\net10.0\MantisMcpServer.exe").FullName
 cd ..
 
@@ -95,7 +81,7 @@ $mantisToken = Read-Host "Digite seu Token de API (Personal Access Token)"
 if ([string]::IsNullOrWhiteSpace($mantisToken)) { Write-Error "Token é obrigatório."; exit }
 
 # 5. Opções de Instalação
-Write-Host "`n[3/3] Onde deseja instalar o servidor MCP?" -ForegroundColor Yellow
+Write-Host "`nOnde deseja instalar o servidor MCP?" -ForegroundColor Yellow
 Write-Host "1. Gemini CLI (Comando 'gemini mcp add')"
 Write-Host "2. Claude Code (Comando 'claude mcp add')"
 Write-Host "3. Claude Desktop (Configuração via JSON)"
@@ -105,7 +91,6 @@ $choice = Read-Host "Escolha uma opção (1-4)"
 
 $mcpName = "mantis"
 $mcpCmd = "`"$exePath`""
-$mcpArgs = ""
 $mcpEnv = @{
     "MANTIS_URL" = $mantisUrl
     "MANTIS_USERNAME" = $mantisUser
@@ -121,29 +106,55 @@ switch ($choice) {
         Write-Host "Instalando no Gemini CLI (Escopo: $scopeFlag)..." -ForegroundColor Cyan
         $envArgs = ""
         $mcpEnv.GetEnumerator() | ForEach-Object { $envArgs += " --env $($_.Key)=`"$($_.Value)`"" }
-        
-        # O $envArgs deve vir ANTES do -- para ser tratado como opção do 'gemini mcp add'
         $fullCmd = "gemini mcp add $mcpName $mcpCmd $envArgs --scope $scopeFlag"
         Invoke-Expression $fullCmd
-        Write-Host "[Sucesso] Servidor adicionado ao Gemini CLI ($scopeFlag)!" -ForegroundColor Green
+        Write-Host "[Sucesso] Servidor adicionado ao Gemini CLI!" -ForegroundColor Green
     }
     "2" {
         Write-Host "`nInstalando no Claude Code..." -ForegroundColor Cyan
-        Write-Host "Nota: O Claude Code requer que as variáveis de ambiente estejam acessíveis."
-        $fullCmd = "claude mcp add $mcpName -- $mcpCmd"
-        Write-Host "Comando sugerido: $fullCmd"
-        Write-Host "Certifique-se de configurar as variáveis MANTIS_URL, MANTIS_USERNAME e MANTIS_TOKEN no seu ambiente."
+        try {
+            $envArgs = ""
+            $mcpEnv.GetEnumerator() | ForEach-Object { $envArgs += " --env $($_.Key)=`"$($_.Value)`"" }
+            $fullCmd = "claude mcp add $mcpName -- $mcpCmd $envArgs"
+            Invoke-Expression $fullCmd
+            Write-Host "[Sucesso] Servidor adicionado ao Claude Code!" -ForegroundColor Green
+        } catch {
+            Write-Warning "Não foi possível automatizar para o Claude Code. Tente manualmente:"
+            Write-Host "Comando: claude mcp add $mcpName -- $mcpCmd $envArgs"
+        }
     }
     "3" {
-        Write-Host "`nGerando JSON para Claude Desktop..." -ForegroundColor Cyan
+        Write-Host "`nConfigurando Claude Desktop..." -ForegroundColor Cyan
+        $claudeConfigPath = "$env:AppData\Claude\claude_desktop_config.json"
+        
         $serverObj = @{
             "command" = $exePath.Replace("\", "/")
             "args" = @()
             "env" = $mcpEnv
         }
-        $jsonStr = $serverObj | ConvertTo-Json -Depth 10
-        Write-Host "Adicione este bloco à lista 'mcpServers' no seu arquivo claude_desktop_config.json:" -ForegroundColor White
-        Write-Host "`"$mcpName`": $jsonStr" -ForegroundColor Gray
+
+        try {
+            if (Test-Path $claudeConfigPath) {
+                $config = Get-Content $claudeConfigPath -Raw | ConvertFrom-Json
+            } else {
+                $config = New-Object PSObject -Property @{ mcpServers = New-Object PSObject }
+            }
+
+            if (-not $config.PSObject.Properties['mcpServers']) {
+                $config | Add-Member -MemberType NoteProperty -Name "mcpServers" -Value (New-Object PSObject)
+            }
+
+            # Adiciona ou atualiza o nó mantis sem tocar nos outros
+            $config.mcpServers | Add-Member -MemberType NoteProperty -Name $mcpName -Value $serverObj -Force
+            
+            $jsonStr = $config | ConvertTo-Json -Depth 10
+            $jsonStr | Set-Content $claudeConfigPath -Encoding UTF8
+            Write-Host "[Sucesso] Arquivo de configuração do Claude Desktop atualizado!" -ForegroundColor Green
+        } catch {
+            Write-Error "Falha ao atualizar o arquivo do Claude Desktop. $_"
+            Write-Host "Adicione este bloco manualmente em $claudeConfigPath :" -ForegroundColor Gray
+            Write-Host "`"$mcpName`": $($serverObj | ConvertTo-Json -Depth 10)"
+        }
     }
     "4" {
         Write-Host "`nComandos para cópia manual:" -ForegroundColor Cyan
