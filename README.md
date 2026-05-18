@@ -15,27 +15,21 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 - **.NET 10 SDK** (or later) installed.
 - **dotnet-svcutil** tool: `dotnet tool install -g dotnet-svcutil`
 - **MantisBT Access:** A valid URL, Username, and Personal Access Token (API Token).
+## 📦 Installation for Users (Non-Developers)
 
-## 📦 Fast Installation (Recommended)
+If you just want to use the MCP server without worrying about code, follow these steps:
 
-The easiest way to set up the server is using the automated PowerShell script. It handles proxy generation, compilation, and registration across multiple platforms.
+1.  **Download the Release:** Go to the [Releases](../../releases) page and download the `MantisMcpServer-Win64.zip` file.
+2.  **Extract:** Unzip the contents to a folder on your computer (e.g., `C:\MantisMCP`).
+3.  **Run the Installer:**
+    - Right-click the `install.ps1` file and select **"Run with PowerShell"**.
+    - The installer will skip the developer steps and ask for your Mantis URL, Username, and API Token.
+    - Choose which AI tool you want to register (Claude, Gemini, or Codex).
+4.  **Restart your AI Tool:** Close and reopen Claude Desktop or your CLI to see the new tools.
 
-```powershell
-.\install.ps1
-```
+---
 
-The script will:
-1. Generate the SOAP Proxy (fixing common MantisBT encoding issues).
-2. Compile the project in Release mode.
-3. Securely collect your credentials.
-4. **Automate installation** for:
-   - **Gemini CLI** (`gemini mcp add`)
-   - **Claude Code** (`claude mcp add`)
-   - **Claude Desktop** (`config.json`)
-   - **Codex CLI** (`codex mcp add`)
-   - **Codex Desktop** (`config.toml`)
-
-## 🔧 Manual Configuration
+## 🛠️ Installation for Developers
 
 If you prefer to configure the server manually, use the following environment variables:
 

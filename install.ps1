@@ -5,80 +5,93 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "--- Configuração do MantisBT MCP Server ---" -ForegroundColor Cyan
 
-# 1. Verificar .NET SDK e dotnet-svcutil
-try {
-    $dotnetVersion = dotnet --version
-    Write-Host "[OK] .NET SDK detectado (v$dotnetVersion)" -ForegroundColor Green
-} catch {
-    Write-Error "O .NET SDK não foi encontrado. Por favor, instale o .NET 10 para continuar."
-    exit
+# 0. Verificar se já existe o binário compilado (Modo Usuário Final)
+$exePath = ""
+$binaryInRoot = Join-Path (Get-Location) "MantisMcpServer.exe"
+$binaryInBuild = Join-Path (Get-Location) "MantisMcpServer\bin\Release\net10.0\MantisMcpServer.exe"
+
+if (Test-Path $binaryInRoot) {
+    $exePath = (Get-Item $binaryInRoot).FullName
+    Write-Host "[INFO] Binário encontrado na raiz. Iniciando modo de configuração rápida." -ForegroundColor Green
+} elseif (Test-Path $binaryInBuild) {
+    $exePath = (Get-Item $binaryInBuild).FullName
+    Write-Host "[INFO] Binário compilado detectado. Pulando build." -ForegroundColor Green
 }
 
-# 2. Coletar URL para Gerar o Proxy
-Write-Host "`n[1/3] Configuração Inicial" -ForegroundColor Yellow
-$mantisUrl = Read-Host "Digite a URL do Mantis (Ex: https://seu-mantis.com/)"
-if ([string]::IsNullOrWhiteSpace($mantisUrl)) { 
-    Write-Error "A URL do Mantis é necessária para gerar o proxy SOAP."
-    exit 
+if ([string]::IsNullOrWhiteSpace($exePath)) {
+    Write-Host "`n[DEBUG] Binário não encontrado. Iniciando modo Desenvolvedor (Build necessário)..." -ForegroundColor Gray
+    
+    # 1. Verificar .NET SDK e dotnet-svcutil
+    try {
+        $dotnetVersion = dotnet --version
+        Write-Host "[OK] .NET SDK detectado (v$dotnetVersion)" -ForegroundColor Green
+    } catch {
+        Write-Error "O .NET SDK não foi encontrado. Se você é um usuário final, certifique-se de ter baixado o arquivo .exe da release oficial."
+        exit
+    }
+
+    # 2. Coletar URL para Gerar o Proxy
+    Write-Host "`n[1/3] Configuração Inicial" -ForegroundColor Yellow
+    $mantisUrl = Read-Host "Digite a URL do Mantis (Ex: https://seu-mantis.com/)"
+    if ([string]::IsNullOrWhiteSpace($mantisUrl)) { 
+        Write-Error "A URL do Mantis é necessária para gerar o proxy SOAP."
+        exit 
+    }
+
+    # 2.5 Gerar Proxy SOAP
+    Write-Host "`n[2/3] Gerando Proxy SOAP a partir do WSDL..." -ForegroundColor Yellow
+    $wsdlUrl = $mantisUrl.TrimEnd('/') + "/api/soap/mantisconnect.php?wsdl"
+    $proxyPath = "MantisMcpServer\ServiceProxy"
+    $tempWsdl = "temp_mantis.wsdl"
+
+    if (-not (Test-Path $proxyPath)) { New-Item -ItemType Directory -Path $proxyPath }
+
+    try {
+        Write-Host "Baixando e corrigindo encoding do WSDL..." -ForegroundColor Gray
+        $response = Invoke-WebRequest -Uri $wsdlUrl -UseBasicParsing
+        $wsdlContent = $response.Content
+        $wsdlContent = $wsdlContent -replace 'encoding="ISO-8859-1"', 'encoding="UTF-8"'
+        
+        $absoluteTempPath = Join-Path (Get-Location) $tempWsdl
+        [System.IO.File]::WriteAllText($absoluteTempPath, $wsdlContent, [System.Text.Encoding]::UTF8)
+        
+        Write-Host "Executando: dotnet-svcutil `"$absoluteTempPath`" ..." -ForegroundColor Gray
+        $env:DOTNET_SVCUTIL_TELEMETRY_OPTOUT = 1
+        
+        $absoluteProxyPath = (Get-Item $proxyPath).FullName
+        dotnet-svcutil "$absoluteTempPath" -o Reference.cs -d "$absoluteProxyPath" -n "*,MantisService" --noLogo
+        
+        if ($LASTEXITCODE -ne 0) { throw "dotnet-svcutil falhou com código $LASTEXITCODE" }
+        Remove-Item $absoluteTempPath -ErrorAction SilentlyContinue
+    } catch {
+        Write-Error "Erro ao gerar proxy: $_"
+        exit
+    }
+
+    # 3. Build do Projeto
+    Write-Host "`n[3/3] Compilando o projeto..." -ForegroundColor Yellow
+    cd MantisMcpServer
+    dotnet build -c Release
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Falha na compilação do projeto."
+        exit
+    }
+    $exePath = (Get-Item "bin\Release\net10.0\MantisMcpServer.exe").FullName
+    cd ..
 }
 
-# 2.5 Gerar Proxy SOAP
-Write-Host "`n[2/3] Gerando Proxy SOAP a partir do WSDL..." -ForegroundColor Yellow
-$wsdlUrl = $mantisUrl.TrimEnd('/') + "/api/soap/mantisconnect.php?wsdl"
-$proxyPath = "MantisMcpServer\ServiceProxy"
-$tempWsdl = "temp_mantis.wsdl"
-
-if (-not (Test-Path $proxyPath)) { New-Item -ItemType Directory -Path $proxyPath }
-
-try {
-    Write-Host "Baixando e corrigindo encoding do WSDL..." -ForegroundColor Gray
-    # MantisBT costuma declarar ISO-8859-1 mas enviar UTF-8, o que quebra o dotnet-svcutil.
-    $response = Invoke-WebRequest -Uri $wsdlUrl -UseBasicParsing
-    $wsdlContent = $response.Content
-    $wsdlContent = $wsdlContent -replace 'encoding="ISO-8859-1"', 'encoding="UTF-8"'
-    
-    $absoluteTempPath = Join-Path (Get-Location) $tempWsdl
-    [System.IO.File]::WriteAllText($absoluteTempPath, $wsdlContent, [System.Text.Encoding]::UTF8)
-    
-    Write-Host "Executando: dotnet-svcutil `"$absoluteTempPath`" ..." -ForegroundColor Gray
-    $env:DOTNET_SVCUTIL_TELEMETRY_OPTOUT = 1
-    
-    $absoluteProxyPath = (Get-Item $proxyPath).FullName
-    $oldReference = Join-Path $absoluteProxyPath "Reference.cs"
-    $oldParams = Join-Path $absoluteProxyPath "dotnet-svcutil.params.json"
-    if (Test-Path $oldReference) { Remove-Item $oldReference -Force }
-    if (Test-Path $oldParams) { Remove-Item $oldParams -Force }
-
-    dotnet-svcutil "$absoluteTempPath" -o Reference.cs -d "$absoluteProxyPath" -n "*,MantisService" --noLogo
-    
-    if ($LASTEXITCODE -ne 0) { throw "dotnet-svcutil falhou com código $LASTEXITCODE" }
-    
-    Remove-Item $absoluteTempPath -ErrorAction SilentlyContinue
-    Write-Host "[OK] Proxy SOAP gerado com sucesso." -ForegroundColor Green
-} catch {
-    Write-Error "Erro detalhado: $_"
-    Remove-Item $tempWsdl -ErrorAction SilentlyContinue
-    exit
+# 4. Coletar Restante das Credenciais (A partir daqui é igual para todos)
+Write-Host "`nConfiguração de Acesso ao Mantis" -ForegroundColor Yellow
+if ([string]::IsNullOrWhiteSpace($mantisUrl)) {
+    $mantisUrl = Read-Host "Digite a URL do Mantis (Ex: https://seu-mantis.com/)"
 }
-
-# 3. Build do Projeto
-Write-Host "`n[3/3] Compilando o projeto..." -ForegroundColor Yellow
-cd MantisMcpServer
-dotnet build -c Release
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Falha na compilação do projeto."
-    exit
-}
-$exePath = (Get-Item "bin\Release\net10.0\MantisMcpServer.exe").FullName
-cd ..
-
-# 4. Coletar Restante das Credenciais
-Write-Host "`nConfiguração de Acesso Final" -ForegroundColor Yellow
 $mantisUser = Read-Host "Digite seu Usuário"
-if ([string]::IsNullOrWhiteSpace($mantisUser)) { Write-Error "Usuário é obrigatório."; exit }
-
 $mantisToken = Read-Host "Digite seu Token de API (Personal Access Token)"
-if ([string]::IsNullOrWhiteSpace($mantisToken)) { Write-Error "Token é obrigatório."; exit }
+
+if ([string]::IsNullOrWhiteSpace($mantisUrl) -or [string]::IsNullOrWhiteSpace($mantisUser) -or [string]::IsNullOrWhiteSpace($mantisToken)) {
+    Write-Error "Todos os campos são obrigatórios."; exit
+}
+
 
 # 5. Opções de Instalação
 Write-Host "`nOnde deseja instalar o servidor MCP?" -ForegroundColor Yellow
