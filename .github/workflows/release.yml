@@ -32,6 +32,8 @@ jobs:
     - name: Publish
       run: |
         dotnet publish MantisMcpServer/MantisMcpServer.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o ./publish
+        copy install.ps1 ./publish/
+        del ./publish/*.pdb
 
     - name: Zip Artifact
       run: Compress-Archive -Path ./publish/* -DestinationPath MantisMcpServer-Win64.zip
