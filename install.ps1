@@ -32,23 +32,44 @@ if (-not (Test-Path $proxyPath)) { New-Item -ItemType Directory -Path $proxyPath
 
 try {
     Write-Host "Baixando e corrigindo encoding do WSDL..." -ForegroundColor Gray
-    # MantisBT costuma declarar ISO-8859-1 mas enviar UTF-8, o que quebra o dotnet-svcutil.
-    # Usamos Invoke-WebRequest para garantir o conteúdo bruto (string)
     $response = Invoke-WebRequest -Uri $wsdlUrl -UseBasicParsing
     $wsdlContent = $response.Content
-    $wsdlContent = $wsdlContent.Replace('encoding="ISO-8859-1"', 'encoding="UTF-8"')
-    $wsdlContent | Set-Content -Path $tempWsdl -Encoding UTF8
     
-    Write-Host "Executando: dotnet-svcutil $tempWsdl ..." -ForegroundColor Gray
+    # Uso do operador -replace (case-insensitive) para garantir que pegue 'ISO-8859-1' ou 'iso-8859-1'
+    $wsdlContent = $wsdlContent -replace 'encoding="ISO-8859-1"', 'encoding="UTF-8"'
+    
+    # Salva usando UTF8 sem BOM para evitar problemas com o parser
+    $absoluteTempPath = Join-Path (Get-Location) $tempWsdl
+    [System.IO.File]::WriteAllText($absoluteTempPath, $wsdlContent, [System.Text.Encoding]::UTF8)
+    
+    Write-Host "Executando: dotnet-svcutil `"$absoluteTempPath`" ..." -ForegroundColor Gray
     $env:DOTNET_SVCUTIL_TELEMETRY_OPTOUT = 1
-    dotnet-svcutil $tempWsdl -o Reference.cs -d $proxyPath -n "*,MantisService" --noLogo
     
-    if ($LASTEXITCODE -ne 0) { throw "dotnet-svcutil falhou com código $LASTEXITCODE" }
+    # Resolve o caminho absoluto da pasta de destino
+    $absoluteProxyPath = (Get-Item $proxyPath).FullName
+
+    # Remove arquivos anteriores se existirem para evitar erro de 'file already exists'
+    $oldReference = Join-Path $absoluteProxyPath "Reference.cs"
+    $oldParams = Join-Path $absoluteProxyPath "dotnet-svcutil.params.json"
+    if (Test-Path $oldReference) { Remove-Item $oldReference -Force }
+    if (Test-Path $oldParams) { Remove-Item $oldParams -Force }
+
+    # Executa e captura saída completa
+    dotnet-svcutil "$absoluteTempPath" -o Reference.cs -d "$absoluteProxyPath" -n "*,MantisService" --noLogo
     
-    Remove-Item $tempWsdl -ErrorAction SilentlyContinue
+    if ($LASTEXITCODE -ne 0) { 
+        Write-Error "O comando dotnet-svcutil falhou."
+        throw "dotnet-svcutil retornou código de erro $LASTEXITCODE" 
+    }
+    
+    Remove-Item $absoluteTempPath -ErrorAction SilentlyContinue
     Write-Host "[OK] Proxy SOAP gerado com sucesso." -ForegroundColor Green
 } catch {
-    Write-Error "Falha ao gerar o proxy. Erro: $_"
+    Write-Error "Erro detalhado: $_"
+    if (Test-Path $tempWsdl) { 
+        Write-Host "`n--- Conteúdo do WSDL baixado (primeiras 5 linhas) ---" -ForegroundColor Gray
+        Get-Content $tempWsdl -TotalCount 5
+    }
     Remove-Item $tempWsdl -ErrorAction SilentlyContinue
     exit
 }
@@ -92,12 +113,16 @@ $mcpEnv = @{
 
 switch ($choice) {
     "1" {
-        Write-Host "`nInstalando no Gemini CLI..." -ForegroundColor Cyan
+        Write-Host "`nConfiguração do Gemini CLI" -ForegroundColor Cyan
+        $scope = Read-Host "Deseja instalar de forma (1) Local [Projeto] ou (2) Global [Usuário]? (Padrão: 1)"
+        $scopeFlag = if ($scope -eq "2") { "user" } else { "project" }
+        
+        Write-Host "Instalando no Gemini CLI (Escopo: $scopeFlag)..." -ForegroundColor Cyan
         $envArgs = ""
         $mcpEnv.GetEnumerator() | ForEach-Object { $envArgs += " --env $($_.Key)=`"$($_.Value)`"" }
-        $fullCmd = "gemini mcp add $mcpName $mcpCmd -- $mcpArgs $envArgs"
+        $fullCmd = "gemini mcp add $mcpName $mcpCmd --scope $scopeFlag -- $mcpArgs $envArgs"
         Invoke-Expression $fullCmd
-        Write-Host "[Sucesso] Servidor adicionado ao Gemini CLI!" -ForegroundColor Green
+        Write-Host "[Sucesso] Servidor adicionado ao Gemini CLI ($scopeFlag)!" -ForegroundColor Green
     }
     "2" {
         Write-Host "`nInstalando no Claude Code..." -ForegroundColor Cyan
