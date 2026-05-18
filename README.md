@@ -28,6 +28,8 @@ If you just want to use the MCP server without worrying about code, follow these
 2.  **Extract:** Unzip the contents to a folder on your computer (e.g., `C:\MantisMCP`).
 3.  **Run the Installer:**
     - Right-click the `install.ps1` file and select **"Run with PowerShell"**.
+    - *Note: If you see a security warning about unsigned scripts, run the following command in PowerShell first:* `Unblock-File .\install.ps1`
+    - Alternatively, run: `powershell -ExecutionPolicy Bypass -File .\install.ps1`
     - The installer will skip the developer steps and ask for your Mantis URL, Username, and API Token.
     - Choose which AI tool you want to register (Claude, Gemini, or Codex).
 4.  **Restart your AI Tool:** Close and reopen Claude Desktop or your CLI to see the new tools.
