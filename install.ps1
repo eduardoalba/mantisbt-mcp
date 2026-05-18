@@ -121,7 +121,9 @@ switch ($choice) {
         Write-Host "Instalando no Gemini CLI (Escopo: $scopeFlag)..." -ForegroundColor Cyan
         $envArgs = ""
         $mcpEnv.GetEnumerator() | ForEach-Object { $envArgs += " --env $($_.Key)=`"$($_.Value)`"" }
-        $fullCmd = "gemini mcp add $mcpName $mcpCmd --scope $scopeFlag -- $envArgs"
+        
+        # O $envArgs deve vir ANTES do -- para ser tratado como opção do 'gemini mcp add'
+        $fullCmd = "gemini mcp add $mcpName $mcpCmd $envArgs --scope $scopeFlag"
         Invoke-Expression $fullCmd
         Write-Host "[Sucesso] Servidor adicionado ao Gemini CLI ($scopeFlag)!" -ForegroundColor Green
     }
@@ -134,22 +136,18 @@ switch ($choice) {
     }
     "3" {
         Write-Host "`nGerando JSON para Claude Desktop..." -ForegroundColor Cyan
-        $jsonObj = @{
-            "mcpServers" = @{
-                "mantis" = @{
-                    "command" = $exePath.Replace("\", "/")
-                    "args" = @()
-                    "env" = $mcpEnv
-                }
-            }
+        $serverObj = @{
+            "command" = $exePath.Replace("\", "/")
+            "args" = @()
+            "env" = $mcpEnv
         }
-        $jsonStr = $jsonObj | ConvertTo-Json -Depth 10
-        Write-Host "Adicione este bloco ao seu arquivo claude_desktop_config.json:" -ForegroundColor White
-        Write-Host $jsonStr -ForegroundColor Gray
+        $jsonStr = $serverObj | ConvertTo-Json -Depth 10
+        Write-Host "Adicione este bloco à lista 'mcpServers' no seu arquivo claude_desktop_config.json:" -ForegroundColor White
+        Write-Host "`"$mcpName`": $jsonStr" -ForegroundColor Gray
     }
     "4" {
         Write-Host "`nComandos para cópia manual:" -ForegroundColor Cyan
-        Write-Host "GEMINI: gemini mcp add $mcpName $mcpCmd --env MANTIS_URL=`"$mantisUrl`" --env MANTIS_USERNAME=`"$mantisUser`" --env MANTIS_TOKEN=`"$mantisToken`""
+        Write-Host "GEMINI: gemini mcp add $mcpName $mcpCmd --env MANTIS_URL=`"$mantisUrl`" --env MANTIS_USERNAME=`"$mantisUser`" --env MANTIS_TOKEN=`"$mantisToken`" --scope project"
         Write-Host "CLAUDE: claude mcp add $mcpName -- $mcpCmd"
     }
 }
