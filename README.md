@@ -5,7 +5,7 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 ### 📋 Compatibility
 - **MantisBT Version:** 2.x or later (tested with latest stable releases).
 - **Protocol:** SOAP (MantisConnect).
-- **Authentication:** Personal Access Token (recommended) or Password.
+- **Authentication:** Personal Access Token (required for security).
 
 ## 🚀 Features
 
