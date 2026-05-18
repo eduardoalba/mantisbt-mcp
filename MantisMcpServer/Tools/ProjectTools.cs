@@ -20,7 +20,7 @@ namespace MantisMcpServer.Tools
         }
 
         [McpServerTool]
-        [Description("Retorna a lista de projetos acessíveis pelo usuário.")]
+        [Description("Lists all projects that the current user has access to. Use this first to find project IDs.")]
         public async Task<string> GetMyProjectsAsync()
         {
             try
@@ -31,15 +31,15 @@ namespace MantisMcpServer.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao listar projetos");
-                return $"Erro ao listar projetos: {ex.Message}";
+                _logger.LogError(ex, "Error listing projects");
+                return $"Error listing projects: {ex.Message}. Check your credentials and URL.";
             }
         }
 
         [McpServerTool]
-        [Description("Lista as categorias disponíveis para um determinado projeto.")]
+        [Description("Retrieves all available categories for a specific project. Categories are required when creating new issues.")]
         public async Task<string> GetCategoriesAsync(
-            [Description("ID do projeto.")] int project_id)
+            [Description("The numeric ID of the project.")] int project_id)
         {
             try
             {
@@ -49,13 +49,13 @@ namespace MantisMcpServer.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao buscar categorias do projeto {ProjectId}", project_id);
-                return $"Erro ao buscar categorias: {ex.Message}";
+                _logger.LogError(ex, "Error fetching categories for project {ProjectId}", project_id);
+                return $"Error fetching categories for project {project_id}: {ex.Message}. Make sure the project ID is correct.";
             }
         }
 
         [McpServerTool]
-        [Description("Retorna os mapeamentos de Status, Prioridades, Severidades e Resoluções.")]
+        [Description("Returns common system metadata: valid Status, Priority, Severity, and Resolution levels with their corresponding numeric IDs.")]
         public async Task<string> GetSystemEnumsAsync()
         {
             try
@@ -78,9 +78,10 @@ namespace MantisMcpServer.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao buscar enums do sistema");
-                return $"Erro ao buscar metadados: {ex.Message}";
+                _logger.LogError(ex, "Error fetching system enums");
+                return $"Error fetching system metadata: {ex.Message}.";
             }
         }
     }
 }
+

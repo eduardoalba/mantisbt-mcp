@@ -20,9 +20,9 @@ namespace MantisMcpServer.Tools
         }
 
         [McpServerTool]
-        [Description("Recupera todos os detalhes de um chamado específico pelo seu ID, incluindo notas, relacionamentos, tags e anexos.")]
+        [Description("Retrieves all details of a specific MantisBT issue (bug) by its numeric ID. This includes notes (comments), relationships, tags, and attachments.")]
         public async Task<string> GetIssueAsync(
-            [Description("O ID numérico do chamado no MantisBT.")] int issue_id)
+            [Description("The numeric ID of the issue (bug) in MantisBT. Example: 123")] int issue_id)
         {
             try
             {
@@ -32,17 +32,17 @@ namespace MantisMcpServer.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao buscar chamado {IssueId}", issue_id);
-                return $"Erro ao buscar chamado: {ex.Message}";
+                _logger.LogError(ex, "Error retrieving issue {IssueId}", issue_id);
+                return $"Error retrieving issue {issue_id}: {ex.Message}. Make sure the ID is correct and you have permission to view it.";
             }
         }
 
         [McpServerTool]
-        [Description("Realiza uma busca de chamados em um projeto com paginação.")]
+        [Description("Searches for issues within a specific MantisBT project with pagination support. Useful for listing recent bugs or checking project status.")]
         public async Task<string> SearchIssuesAsync(
-            [Description("ID do projeto.")] int project_id,
-            [Description("Número da página (padrão: 1).")] int page_number = 1,
-            [Description("Registros por página (padrão: 50).")] int per_page = 50)
+            [Description("The numeric ID of the project.")] int project_id,
+            [Description("The page number to retrieve (starts at 1).")] int page_number = 1,
+            [Description("Number of issues to return per page (default is 50).")] int per_page = 50)
         {
             try
             {
@@ -58,20 +58,20 @@ namespace MantisMcpServer.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao pesquisar chamados no projeto {ProjectId}", project_id);
-                return $"Erro ao pesquisar chamados: {ex.Message}";
+                _logger.LogError(ex, "Error searching issues in project {ProjectId}", project_id);
+                return $"Error searching issues in project {project_id}: {ex.Message}. Check if the project ID exists.";
             }
         }
 
         [McpServerTool]
-        [Description("Abre um novo chamado no sistema.")]
+        [Description("Creates a new issue (bug report) in a specific MantisBT project.")]
         public async Task<string> CreateIssueAsync(
-            [Description("ID do projeto de destino.")] int project_id,
-            [Description("Título/Resumo curto do chamado.")] string summary,
-            [Description("Descrição detalhada do problema.")] string description,
-            [Description("Nome da categoria associada.")] string category,
-            [Description("ID da prioridade.")] int priority_id = 30, // Normal
-            [Description("ID da severidade.")] int severity_id = 50) // Major
+            [Description("The numeric ID of the target project.")] int project_id,
+            [Description("A brief title or summary of the issue.")] string summary,
+            [Description("A detailed description of the problem, including steps to reproduce.")] string description,
+            [Description("The category name for the issue (must exist in the project). Use GetCategories to find valid names.")] string category,
+            [Description("Priority ID (e.g., 10=none, 20=low, 30=normal, 40=high, 50=urgent). Default is 30.")] int priority_id = 30,
+            [Description("Severity ID (e.g., 10=feature, 20=trivial, 30=text, 40=tweak, 50=minor, 60=major, 70=crash, 80=block). Default is 50.")] int severity_id = 50)
         {
             try
             {
@@ -87,21 +87,21 @@ namespace MantisMcpServer.Tools
 
                 using var client = _mantisClient.CreateSoapClient();
                 var issueId = await client.mc_issue_addAsync(_mantisClient.Username, _mantisClient.Token, issue);
-                return $"Chamado criado com sucesso! ID: {issueId}";
+                return $"Issue created successfully! ID: {issueId}";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao criar chamado no projeto {ProjectId}", project_id);
-                return $"Erro ao criar chamado: {ex.Message}";
+                _logger.LogError(ex, "Error creating issue in project {ProjectId}", project_id);
+                return $"Error creating issue: {ex.Message}. Ensure the category exists and project ID is valid.";
             }
         }
 
         [McpServerTool]
-        [Description("Adiciona um comentário a um chamado existente.")]
+        [Description("Adds a new note (comment) to an existing MantisBT issue.")]
         public async Task<string> AddNoteAsync(
-            [Description("ID do chamado.")] int issue_id,
-            [Description("Conteúdo do comentário/nota.")] string text,
-            [Description("Se true, a nota será privada.")] bool is_private = false)
+            [Description("The numeric ID of the issue.")] int issue_id,
+            [Description("The text content of the note/comment.")] string text,
+            [Description("Whether the note should be private (only visible to authorized users).")] bool is_private = false)
         {
             try
             {
@@ -113,28 +113,28 @@ namespace MantisMcpServer.Tools
 
                 using var client = _mantisClient.CreateSoapClient();
                 var noteId = await client.mc_issue_note_addAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString(), note);
-                return $"Nota adicionada com sucesso! ID: {noteId}";
+                return $"Note added successfully! ID: {noteId}";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao adicionar nota ao chamado {IssueId}", issue_id);
-                return $"Erro ao adicionar nota: {ex.Message}";
+                _logger.LogError(ex, "Error adding note to issue {IssueId}", issue_id);
+                return $"Error adding note: {ex.Message}. Check if the issue ID is valid.";
             }
         }
 
         [McpServerTool]
-        [Description("Altera o status de um chamado.")]
+        [Description("Updates the status, resolution, or adds a note to an existing MantisBT issue. Useful for progressing workflows.")]
         public async Task<string> UpdateIssueStatusAsync(
-            [Description("ID do chamado.")] int issue_id,
-            [Description("ID numérico do novo status.")] int status_id,
-            [Description("ID da resolução (opcional).")] int? resolution_id = null,
-            [Description("Nota opcional para registrar o motivo da mudança.")] string? note = null)
+            [Description("The numeric ID of the issue.")] int issue_id,
+            [Description("The numeric ID of the new status (e.g., 10=new, 20=feedback, 30=acknowledged, 40=confirmed, 50=assigned, 80=resolved, 90=closed).")] int status_id,
+            [Description("Optional numeric ID for the resolution (e.g., 10=open, 20=fixed, 30=reopened, 40=unable to duplicate, 50=not fixable, 60=duplicate, 70=not a bug, 80=suspended, 90=won't fix).")] int? resolution_id = null,
+            [Description("Optional note to explain the status change.")] string? note = null)
         {
             try
             {
                 using var client = _mantisClient.CreateSoapClient();
                 
-                // Primeiro buscamos o chamado atual para não perder dados na atualização
+                // Fetch the issue to maintain existing data
                 var issue = await client.mc_issue_getAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString());
                 
                 issue.status = new ObjectRef { id = status_id.ToString() };
@@ -151,15 +151,16 @@ namespace MantisMcpServer.Tools
                 }
 
                 var success = await client.mc_issue_updateAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString(), issue);
-                return success ? "Status atualizado com sucesso!" : "Falha ao atualizar o status.";
+                return success ? "Issue status updated successfully!" : "Failed to update issue status.";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao atualizar status do chamado {IssueId}", issue_id);
-                return $"Erro ao atualizar status: {ex.Message}";
+                _logger.LogError(ex, "Error updating status for issue {IssueId}", issue_id);
+                return $"Error updating status: {ex.Message}. Ensure the status ID and issue ID are valid.";
             }
         }
     }
 }
+
 
 

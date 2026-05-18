@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging;
 using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using Serilog;
+using Serilog.Events;
 
 namespace MantisMcpServer
 {
@@ -13,43 +15,73 @@ namespace MantisMcpServer
     {
         static async Task Main(string[] args)
         {
-            // Importante: Usar EmptyApplicationBuilder para não poluir o STDOUT com logs padrão
-            var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { Args = args });
+            // Configuração do Serilog
+            var logPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "mantisbt-mcp",
+                "logs",
+                "server.log"
+            );
 
-            // Redireciona Logs para o STDERR (obrigatório para transporte STDIO)
-            builder.Logging.AddConsole(options =>
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+                .Enrich.FromLogContext()
+                // Log para Arquivo (Persistência)
+                .WriteTo.File(logPath, rollingInterval: RollingInterval.Day)
+                // Log para Console (STDERR para não quebrar o MCP)
+                .WriteTo.Console(standardErrorFromLevel: LogEventLevel.Verbose) 
+                .CreateLogger();
+
+            try 
             {
-                options.LogToStandardErrorThreshold = LogLevel.Trace;
-            });
+                Log.Information("Iniciando MantisBT MCP Server...");
 
-            // Carregamento das configurações via Variáveis de Ambiente
-            var mantisUrl = Environment.GetEnvironmentVariable("MANTIS_URL");
-            var mantisUser = Environment.GetEnvironmentVariable("MANTIS_USERNAME");
-            var mantisToken = Environment.GetEnvironmentVariable("MANTIS_TOKEN");
+                // Importante: Usar EmptyApplicationBuilder para não poluir o STDOUT com logs padrão
+                var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { Args = args });
 
-            if (string.IsNullOrEmpty(mantisUrl) || string.IsNullOrEmpty(mantisUser) || string.IsNullOrEmpty(mantisToken))
-            {
-                Console.Error.WriteLine("ERRO CRÍTICO: As variáveis de ambiente MANTIS_URL, MANTIS_USERNAME e MANTIS_TOKEN devem estar configuradas.");
-                return;
+                // Usa o Serilog como provedor de logs
+                builder.Logging.ClearProviders();
+                builder.Logging.AddSerilog();
+
+                // Carregamento das configurações via Variáveis de Ambiente
+                var mantisUrl = Environment.GetEnvironmentVariable("MANTIS_URL");
+                var mantisUser = Environment.GetEnvironmentVariable("MANTIS_USERNAME");
+                var mantisToken = Environment.GetEnvironmentVariable("MANTIS_TOKEN");
+
+                if (string.IsNullOrEmpty(mantisUrl) || string.IsNullOrEmpty(mantisUser) || string.IsNullOrEmpty(mantisToken))
+                {
+                    Log.Fatal("ERRO CRÍTICO: As variáveis de ambiente MANTIS_URL, MANTIS_USERNAME e MANTIS_TOKEN devem estar configuradas.");
+                    return;
+                }
+
+                // Registro do Wrapper da API Mantis
+                builder.Services.AddSingleton(new MantisClient(mantisUrl, mantisUser, mantisToken));
+
+                // Configuração do Servidor MCP
+                builder.Services.AddMcpServer(options => 
+                {
+                    options.ServerInfo = new Implementation 
+                    { 
+                        Name = "MantisBT-SOAP-MCP", 
+                        Version = "1.0.0" 
+                    };
+                })
+                .WithStdioServerTransport() 
+                .WithToolsFromAssembly(); 
+
+                using var host = builder.Build();
+                await host.RunAsync();
             }
-
-            // Registro do Wrapper da API Mantis
-            builder.Services.AddSingleton(new MantisClient(mantisUrl, mantisUser, mantisToken));
-
-            // Configuração do Servidor MCP
-            builder.Services.AddMcpServer(options => 
+            catch (Exception ex)
             {
-                options.ServerInfo = new Implementation 
-                { 
-                    Name = "MantisBT-SOAP-MCP", 
-                    Version = "1.0.0" 
-                };
-            })
-            .WithStdioServerTransport() // Nome correto do método
-            .WithToolsFromAssembly(); 
-
-            using var host = builder.Build();
-            await host.RunAsync();
+                Log.Fatal(ex, "O servidor MCP terminou inesperadamente.");
+            }
+            finally
+            {
+                await Log.CloseAndFlushAsync();
+            }
         }
     }
 }
+

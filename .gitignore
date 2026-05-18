@@ -8,6 +8,11 @@
 *.userosscache
 *.sln.docstates
 
+# Logs and Temp
+erro.txt
+install_log.txt
+temp_mantis.wsdl
+
 # Secrets
 .env
 secrets.json
@@ -17,3 +22,4 @@ appsettings.Development.json
 
 # Auto-generated SOAP Proxy
 MantisMcpServer/ServiceProxy/
+
