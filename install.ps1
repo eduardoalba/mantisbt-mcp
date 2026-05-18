@@ -82,7 +82,8 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error "Falha na compilação do projeto."
     exit
 }
-$projectPath = (Get-Item "MantisMcpServer.csproj").FullName
+# Localiza o executável gerado
+$exePath = (Get-Item "bin\Release\net10.0\MantisMcpServer.exe").FullName
 cd ..
 
 # 4. Coletar Restante das Credenciais
@@ -103,8 +104,8 @@ Write-Host "4. Apenas gerar comandos para copiar"
 $choice = Read-Host "Escolha uma opção (1-4)"
 
 $mcpName = "mantis"
-$mcpCmd = "dotnet"
-$mcpArgs = "run --project `"$projectPath`" --no-build"
+$mcpCmd = "`"$exePath`""
+$mcpArgs = ""
 $mcpEnv = @{
     "MANTIS_URL" = $mantisUrl
     "MANTIS_USERNAME" = $mantisUser
@@ -120,17 +121,14 @@ switch ($choice) {
         Write-Host "Instalando no Gemini CLI (Escopo: $scopeFlag)..." -ForegroundColor Cyan
         $envArgs = ""
         $mcpEnv.GetEnumerator() | ForEach-Object { $envArgs += " --env $($_.Key)=`"$($_.Value)`"" }
-        $fullCmd = "gemini mcp add $mcpName $mcpCmd --scope $scopeFlag -- $mcpArgs $envArgs"
+        $fullCmd = "gemini mcp add $mcpName $mcpCmd --scope $scopeFlag -- $envArgs"
         Invoke-Expression $fullCmd
         Write-Host "[Sucesso] Servidor adicionado ao Gemini CLI ($scopeFlag)!" -ForegroundColor Green
     }
     "2" {
         Write-Host "`nInstalando no Claude Code..." -ForegroundColor Cyan
-        # Claude Code usa env vars passadas na instalação ou via config
         Write-Host "Nota: O Claude Code requer que as variáveis de ambiente estejam acessíveis."
-        $fullCmd = "claude mcp add $mcpName -- $mcpCmd $mcpArgs"
-        # Para passar env no claude add é um pouco diferente dependendo da versão, 
-        # o ideal é instruir o usuário a manter o .env ou passar no comando se suportado.
+        $fullCmd = "claude mcp add $mcpName -- $mcpCmd"
         Write-Host "Comando sugerido: $fullCmd"
         Write-Host "Certifique-se de configurar as variáveis MANTIS_URL, MANTIS_USERNAME e MANTIS_TOKEN no seu ambiente."
     }
@@ -139,8 +137,8 @@ switch ($choice) {
         $jsonObj = @{
             "mcpServers" = @{
                 "mantis" = @{
-                    "command" = $mcpCmd
-                    "args" = @("run", "--project", $projectPath.Replace("\", "/"), "--no-build")
+                    "command" = $exePath.Replace("\", "/")
+                    "args" = @()
                     "env" = $mcpEnv
                 }
             }
@@ -151,8 +149,8 @@ switch ($choice) {
     }
     "4" {
         Write-Host "`nComandos para cópia manual:" -ForegroundColor Cyan
-        Write-Host "GEMINI: gemini mcp add $mcpName $mcpCmd -- $mcpArgs --env MANTIS_URL=`"$mantisUrl`" --env MANTIS_USERNAME=`"$mantisUser`" --env MANTIS_TOKEN=`"$mantisToken`""
-        Write-Host "CLAUDE: claude mcp add $mcpName -- $mcpCmd $mcpArgs"
+        Write-Host "GEMINI: gemini mcp add $mcpName $mcpCmd --env MANTIS_URL=`"$mantisUrl`" --env MANTIS_USERNAME=`"$mantisUser`" --env MANTIS_TOKEN=`"$mantisToken`""
+        Write-Host "CLAUDE: claude mcp add $mcpName -- $mcpCmd"
     }
 }
 
