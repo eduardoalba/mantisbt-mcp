@@ -2,6 +2,11 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI agents (like Claude, Gemini, and Codex) to interact with the [Mantis Bug Tracker](https://www.mantisbt.org/) via its SOAP API (MantisConnect).
 
+### 📋 Compatibility
+- **MantisBT Version:** 2.x or later (tested with latest stable releases).
+- **Protocol:** SOAP (MantisConnect).
+- **Authentication:** Personal Access Token (recommended) or Password.
+
 ## 🚀 Features
 
 - **Issue Management:** Read details, search within projects, create new issues, and add notes.
