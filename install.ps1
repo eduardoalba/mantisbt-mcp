@@ -189,7 +189,7 @@ foreach ($choice in $selectedChoices) {
             Write-Host "`n--- Configuring Codex Desktop ---" -ForegroundColor Cyan
             $codexConfigPath = "$env:USERPROFILE\.codex\config.toml"
             
-            $tomlBlock = "`n[mcp_servers.$mcpName]`n"
+            $tomlBlock = "[mcp_servers.$mcpName]`n"
             $tomlBlock += "command = `"$($exePath.Replace('\', '\\'))`"`n"
             $tomlBlock += "args = []`n"
             $tomlBlock += "[mcp_servers.$mcpName.env]`n"
@@ -202,14 +202,19 @@ foreach ($choice in $selectedChoices) {
                 
                 if (Test-Path $codexConfigPath) {
                     $content = Get-Content $codexConfigPath -Raw
+                    $pattern = "(?s)\[mcp_servers\.$mcpName\].*?(?=\n\[mcp_servers|\z)"
+                    
                     if ($content -match "\[mcp_servers\.$mcpName\]") {
-                        Write-Warning "Server '$mcpName' already exists in Codex config.toml."
-                        $overwrite = Read-Host "Append again at the end of the file? (Y/N)"
-                        if ($overwrite -ne "Y" -and $overwrite -ne "y") { continue }
+                        Write-Host "Updating existing '$mcpName' configuration in config.toml..." -ForegroundColor Gray
+                        $newContent = $content -replace $pattern, $tomlBlock.Trim()
+                        $newContent | Set-Content $codexConfigPath -Encoding UTF8
+                    } else {
+                        Add-Content -Path $codexConfigPath -Value "`n$tomlBlock" -Encoding UTF8
                     }
+                } else {
+                    Set-Content -Path $codexConfigPath -Value $tomlBlock -Encoding UTF8
                 }
                 
-                Add-Content -Path $codexConfigPath -Value $tomlBlock -Encoding UTF8
                 Write-Host "[Success] Codex configuration updated!" -ForegroundColor Green
             } catch {
                 Write-Error "Failed to update Codex configuration. $_"
