@@ -10,10 +10,10 @@ namespace MantisMcpServer.Tools
     [McpServerToolType]
     public class IssueTools
     {
-        private readonly MantisClient _mantisClient;
+        private readonly IMantisClient _mantisClient;
         private readonly ILogger<IssueTools> _logger;
 
-        public IssueTools(MantisClient mantisClient, ILogger<IssueTools> logger)
+        public IssueTools(IMantisClient mantisClient, ILogger<IssueTools> logger)
         {
             _mantisClient = mantisClient;
             _logger = logger;

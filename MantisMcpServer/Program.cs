@@ -56,7 +56,7 @@ namespace MantisMcpServer
                 }
 
                 // Registro do Wrapper da API Mantis
-                builder.Services.AddSingleton(new MantisClient(mantisUrl, mantisUser, mantisToken));
+                builder.Services.AddSingleton<IMantisClient>(new MantisClient(mantisUrl, mantisUser, mantisToken));
 
                 // Configuração do Servidor MCP
                 builder.Services.AddMcpServer(options => 
