@@ -176,6 +176,7 @@ foreach ($choice in $selectedChoices) {
         "3" {
             Write-Host "`n--- Configuring Claude Desktop ---" -ForegroundColor Cyan
             $claudeConfigPath = "$env:AppData\Claude\claude_desktop_config.json"
+            $claudeDir = Split-Path $claudeConfigPath
             
             $serverObj = @{
                 "command" = $exePath.Replace("\", "/")
@@ -184,6 +185,11 @@ foreach ($choice in $selectedChoices) {
             }
 
             try {
+                if (-not (Test-Path $claudeDir)) {
+                    Write-Host "Creating directory: $claudeDir" -ForegroundColor Gray
+                    New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null
+                }
+
                 if (Test-Path $claudeConfigPath) {
                     $config = Get-Content $claudeConfigPath -Raw | ConvertFrom-Json
                 } else {
