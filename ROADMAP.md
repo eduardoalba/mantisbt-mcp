@@ -9,13 +9,18 @@ Este arquivo serve como o repositório central para discussões arquiteturais, s
 - **Health Checks:** Ferramenta para validar token e URL (`CheckConnectivity`).
 
 ### 2. Expansão de Ferramentas (Baseado no SOAP API)
-- ✅ **Gestão de Anexos:** Upload (`CreateAttachment`) e download (`GetAttachment`) de arquivos.
+- ✅ **Gestão de Anexos de Issue:** Upload (`CreateAttachment`) e download (`GetAttachment`) de arquivos.
+- ✅ **Gestão de Anexos de Projeto:** Upload (`CreateProjectAttachment`), download (`GetProjectAttachment`) e listagem (`GetProjectAttachments`).
 - ✅ **Filtros Customizados:** Listagem (`GetFilters`) e execução (`GetIssuesByFilter`) de filtros salvos.
-- **Gestão de Tags:** Adicionar/Remover tags de issues para melhor organização.
+- ✅ **Gestão de Tags:** Listagem (`GetTags`) e associação (`SetIssueTags`) de tags em issues.
+- ✅ **Gestão de Projetos Avançada:** Listagem de usuários do projeto (`GetProjectUsers`), subprojetos (`GetSubprojects`) e Custom Fields (`GetProjectCustomFields`).
+- ✅ **Busca Avançada:** Busca por resumo exato (`SearchIssueBySummary`).
+- ✅ **Enums Expandidos:** Inclusão de Access Levels, Project Status e Reproducibility em `GetSystemEnums`.
+- **Gestão de Versões:** CRUD de versões de projeto para suporte a roadmaps de release.
 
 ### 3. Melhorias de Experiência (UX/AI)
-- **Resources:** Exposição de logs de erro e estatísticas do projeto como recursos MCP.
-- **Busca Semântica Local:** Cache em SQLite para buscas complexas offline.
+- ✅ **Resources:** Exposição de logs de erro e estatísticas do projeto como recursos MCP.
+- ✅ **Busca Semântica Local:** Cache em SQLite para buscas complexas offline (via `sync_project` e `search_semantic`).
 
 ---
-*Última atualização: 18 de Maio de 2026*
+*Última atualização: Maio de 2026*

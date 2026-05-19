@@ -12,6 +12,8 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 - **Issue Management:** Read details, search within projects, create new issues, and add notes.
 - **Workflow Control:** Update status and resolution of issues.
 - **Metadata Discovery:** List accessible projects, categories, and system enumeration levels (Status, Priority, Severity, etc.).
+- **AI-Enhanced Search (RAG):** Synchronize projects to a local SQLite database and perform semantic searches using OpenAI embeddings.
+- **Observability (Resources):** Expose server logs and project statistics as MCP Resources for better AI monitoring and context.
 - **Smart DX:** High-quality tool descriptions and error handling tailored for LLM consumption.
 - **Persistent Logging:** Detailed logs stored in `%AppData%\mantisbt-mcp\logs` for easy troubleshooting.
 

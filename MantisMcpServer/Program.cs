@@ -1,5 +1,6 @@
 using MantisMcpServer.Services;
 using MantisMcpServer.Tools;
+using MantisMcpServer.Resources;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -53,35 +54,54 @@ namespace MantisMcpServer
                 // Usa o Serilog como provedor de logs
                 builder.Logging.ClearProviders();
                 builder.Logging.AddSerilog();
+// Carregamento das configurações via Variáveis de Ambiente
+var mantisUrl = Environment.GetEnvironmentVariable("MANTIS_URL");
+var mantisUser = Environment.GetEnvironmentVariable("MANTIS_USERNAME");
+var mantisToken = Environment.GetEnvironmentVariable("MANTIS_TOKEN");
+var openAiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
-                // Carregamento das configurações via Variáveis de Ambiente
-                var mantisUrl = Environment.GetEnvironmentVariable("MANTIS_URL");
-                var mantisUser = Environment.GetEnvironmentVariable("MANTIS_USERNAME");
-                var mantisToken = Environment.GetEnvironmentVariable("MANTIS_TOKEN");
+if (string.IsNullOrEmpty(mantisUrl) || string.IsNullOrEmpty(mantisUser) || string.IsNullOrEmpty(mantisToken))
+{
+    Log.Fatal("ERRO CRÍTICO: As variáveis de ambiente MANTIS_URL, MANTIS_USERNAME e MANTIS_TOKEN devem estar configuradas.");
+    return;
+}
 
-                if (string.IsNullOrEmpty(mantisUrl) || string.IsNullOrEmpty(mantisUser) || string.IsNullOrEmpty(mantisToken))
-                {
-                    Log.Fatal("ERRO CRÍTICO: As variáveis de ambiente MANTIS_URL, MANTIS_USERNAME e MANTIS_TOKEN devem estar configuradas.");
-                    return;
-                }
+// Registro do Wrapper da API Mantis
+builder.Services.AddSingleton<IMantisClient>(new MantisClient(mantisUrl, mantisUser, mantisToken));
 
-                // Registro do Wrapper da API Mantis
-                builder.Services.AddSingleton<IMantisClient>(new MantisClient(mantisUrl, mantisUser, mantisToken));
+// Registro dos Serviços de Busca e Embedding
+builder.Services.AddSingleton<ISearchService, SqliteSearchService>();
+if (!string.IsNullOrEmpty(openAiKey))
+{
+    builder.Services.AddSingleton<IEmbeddingService>(sp => 
+        new OpenAIEmbeddingService(openAiKey, "text-embedding-3-small", sp.GetRequiredService<ILogger<OpenAIEmbeddingService>>()));
+}
 
-                // Configuração do Servidor MCP
-                builder.Services.AddMcpServer(options => 
-                {
-                    options.ServerInfo = new Implementation 
-                    { 
-                        Name = "MantisBT-SOAP-MCP", 
-                        Version = version 
-                    };
-                })
-                .WithStdioServerTransport() 
-                .WithToolsFromAssembly(); 
+// Configuração do Servidor MCP
+builder.Services.AddMcpServer(options => 
+{
+    options.ServerInfo = new Implementation 
+    { 
+        Name = "MantisBT-SOAP-MCP", 
+        Version = version 
+    };
+    options.Capabilities ??= new();
+    options.Capabilities.Resources = new(); // Habilita suporte a recursos
+})
+.WithStdioServerTransport() 
+.WithToolsFromAssembly()
+.WithResourcesFromAssembly(); 
 
-                using var host = builder.Build();
-                await host.RunAsync();
+using var host = builder.Build();
+
+// Inicialização do Banco de Dados
+using (var scope = host.Services.CreateScope())
+{
+    var searchService = scope.ServiceProvider.GetRequiredService<ISearchService>();
+    await searchService.InitializeAsync();
+}
+
+await host.RunAsync();
             }
             catch (Exception ex)
             {

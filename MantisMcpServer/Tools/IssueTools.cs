@@ -139,6 +139,30 @@ namespace MantisMcpServer.Tools
         }
 
         [McpServerTool]
+        [Description("Finds the numeric ID of an issue by its exact summary title.")]
+        public async Task<string> SearchIssueBySummaryAsync(
+            [Description("The exact summary title of the issue.")] string summary)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var issueId = await client.mc_issue_get_id_from_summaryAsync(_mantisClient.Username, _mantisClient.Token, summary);
+                
+                if (issueId == "0" || string.IsNullOrEmpty(issueId))
+                {
+                    return $"No issue found with summary: '{summary}'";
+                }
+                
+                return $"Issue found! ID: {issueId}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching issue by summary: {Summary}", summary);
+                return $"Error searching issue: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
         [Description("Creates a new issue (bug report) in a specific MantisBT project.")]
         public async Task<string> CreateIssueAsync(
             [Description("The numeric ID of the target project.")] int project_id,

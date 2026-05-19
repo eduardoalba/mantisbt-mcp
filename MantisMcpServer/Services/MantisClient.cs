@@ -35,6 +35,19 @@ namespace MantisMcpServer.Services
         Task<bool> mc_issue_relationship_deleteAsync(string username, string password, string issue_id, string relationship_id);
         Task<TagDataSearchResult> mc_tag_get_allAsync(string username, string password, string page_number, string per_page);
         Task<bool> mc_issue_set_tagsAsync(string username, string password, string issue_id, TagData[] tags);
+
+        // Phase 4: Subprojects, Users, Custom Fields and Project Attachments
+        Task<string[]> mc_project_get_all_subprojectsAsync(string username, string password, string project_id);
+        Task<AccountData[]> mc_project_get_usersAsync(string username, string password, string project_id, string access);
+        Task<string> mc_issue_get_id_from_summaryAsync(string username, string password, string summary);
+        Task<CustomFieldDefinitionData[]> mc_project_get_custom_fieldsAsync(string username, string password, string project_id);
+        Task<ProjectAttachmentData[]> mc_project_get_attachmentsAsync(string username, string password, string project_id);
+        Task<string> mc_project_attachment_addAsync(string username, string password, string project_id, string name, string title, string description, string file_type, byte[] content);
+        Task<byte[]> mc_project_attachment_getAsync(string username, string password, string project_attachment_id);
+        Task<bool> mc_project_attachment_deleteAsync(string username, string password, string project_attachment_id);
+        Task<ObjectRef[]> mc_enum_access_levelsAsync(string username, string password);
+        Task<ObjectRef[]> mc_enum_project_statusAsync(string username, string password);
+        Task<ObjectRef[]> mc_enum_reproducibilitiesAsync(string username, string password);
     }
 
     public class MantisSoapClientWrapper : IMantisSoapClient
@@ -77,6 +90,19 @@ namespace MantisMcpServer.Services
         public Task<bool> mc_issue_relationship_deleteAsync(string username, string password, string issue_id, string relationship_id) => _inner.mc_issue_relationship_deleteAsync(username, password, issue_id, relationship_id);
         public Task<TagDataSearchResult> mc_tag_get_allAsync(string username, string password, string page_number, string per_page) => _inner.mc_tag_get_allAsync(username, password, page_number, per_page);
         public Task<bool> mc_issue_set_tagsAsync(string username, string password, string issue_id, TagData[] tags) => _inner.mc_issue_set_tagsAsync(username, password, issue_id, tags);
+
+        // Phase 4: Subprojects, Users, Custom Fields and Project Attachments
+        public Task<string[]> mc_project_get_all_subprojectsAsync(string username, string password, string project_id) => _inner.mc_project_get_all_subprojectsAsync(username, password, project_id);
+        public Task<AccountData[]> mc_project_get_usersAsync(string username, string password, string project_id, string access) => _inner.mc_project_get_usersAsync(username, password, project_id, access);
+        public Task<string> mc_issue_get_id_from_summaryAsync(string username, string password, string summary) => _inner.mc_issue_get_id_from_summaryAsync(username, password, summary);
+        public Task<CustomFieldDefinitionData[]> mc_project_get_custom_fieldsAsync(string username, string password, string project_id) => _inner.mc_project_get_custom_fieldsAsync(username, password, project_id);
+        public Task<ProjectAttachmentData[]> mc_project_get_attachmentsAsync(string username, string password, string project_id) => _inner.mc_project_get_attachmentsAsync(username, password, project_id);
+        public Task<string> mc_project_attachment_addAsync(string username, string password, string project_id, string name, string title, string description, string file_type, byte[] content) => _inner.mc_project_attachment_addAsync(username, password, project_id, name, title, description, file_type, content);
+        public Task<byte[]> mc_project_attachment_getAsync(string username, string password, string project_attachment_id) => _inner.mc_project_attachment_getAsync(username, password, project_attachment_id);
+        public Task<bool> mc_project_attachment_deleteAsync(string username, string password, string project_attachment_id) => _inner.mc_project_attachment_deleteAsync(username, password, project_attachment_id);
+        public Task<ObjectRef[]> mc_enum_access_levelsAsync(string username, string password) => _inner.mc_enum_access_levelsAsync(username, password);
+        public Task<ObjectRef[]> mc_enum_project_statusAsync(string username, string password) => _inner.mc_enum_project_statusAsync(username, password);
+        public Task<ObjectRef[]> mc_enum_reproducibilitiesAsync(string username, string password) => _inner.mc_enum_reproducibilitiesAsync(username, password);
 
         public void Dispose()
         {
