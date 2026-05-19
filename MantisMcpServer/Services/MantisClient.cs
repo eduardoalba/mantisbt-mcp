@@ -19,10 +19,22 @@ namespace MantisMcpServer.Services
         // Phase 2: Filters
         Task<FilterData[]> mc_filter_getAsync(string username, string password, string project_id);
         Task<IssueData[]> mc_filter_get_issuesAsync(string username, string password, string project_id, string filter_id, string page_number, string per_page);
+        Task<IssueData[]> mc_filter_search_issuesAsync(string username, string password, FilterSearchData filter, string page_number, string per_page);
         
+        // Phase 2: User
+        Task<UserData> mc_loginAsync(string username, string password);
+        Task<IssueData[]> mc_project_get_issues_for_userAsync(string username, string password, string project_id, string filter_type, AccountData target_user, string page_number, string per_page);
+
         // Phase 2: Attachments
         Task<byte[]> mc_issue_attachment_getAsync(string username, string password, string issue_attachment_id);
         Task<string> mc_issue_attachment_addAsync(string username, string password, string issue_id, string name, string file_type, byte[] content);
+
+        // Phase 3: History, Relationships and Tags
+        Task<HistoryData[]> mc_issue_get_historyAsync(string username, string password, string issue_id);
+        Task<string> mc_issue_relationship_addAsync(string username, string password, string issue_id, RelationshipData relationship);
+        Task<bool> mc_issue_relationship_deleteAsync(string username, string password, string issue_id, string relationship_id);
+        Task<TagDataSearchResult> mc_tag_get_allAsync(string username, string password, string page_number, string per_page);
+        Task<bool> mc_issue_set_tagsAsync(string username, string password, string issue_id, TagData[] tags);
     }
 
     public class MantisSoapClientWrapper : IMantisSoapClient
@@ -49,10 +61,22 @@ namespace MantisMcpServer.Services
         // Phase 2: Filters
         public Task<FilterData[]> mc_filter_getAsync(string username, string password, string project_id) => _inner.mc_filter_getAsync(username, password, project_id);
         public Task<IssueData[]> mc_filter_get_issuesAsync(string username, string password, string project_id, string filter_id, string page_number, string per_page) => _inner.mc_filter_get_issuesAsync(username, password, project_id, filter_id, page_number, per_page);
+        public Task<IssueData[]> mc_filter_search_issuesAsync(string username, string password, FilterSearchData filter, string page_number, string per_page) => _inner.mc_filter_search_issuesAsync(username, password, filter, page_number, per_page);
+
+        // Phase 2: User
+        public Task<UserData> mc_loginAsync(string username, string password) => _inner.mc_loginAsync(username, password);
+        public Task<IssueData[]> mc_project_get_issues_for_userAsync(string username, string password, string project_id, string filter_type, AccountData target_user, string page_number, string per_page) => _inner.mc_project_get_issues_for_userAsync(username, password, project_id, filter_type, target_user, page_number, per_page);
 
         // Phase 2: Attachments
         public Task<byte[]> mc_issue_attachment_getAsync(string username, string password, string issue_attachment_id) => _inner.mc_issue_attachment_getAsync(username, password, issue_attachment_id);
         public Task<string> mc_issue_attachment_addAsync(string username, string password, string issue_id, string name, string file_type, byte[] content) => _inner.mc_issue_attachment_addAsync(username, password, issue_id, name, file_type, content);
+
+        // Phase 3: History, Relationships and Tags
+        public Task<HistoryData[]> mc_issue_get_historyAsync(string username, string password, string issue_id) => _inner.mc_issue_get_historyAsync(username, password, issue_id);
+        public Task<string> mc_issue_relationship_addAsync(string username, string password, string issue_id, RelationshipData relationship) => _inner.mc_issue_relationship_addAsync(username, password, issue_id, relationship);
+        public Task<bool> mc_issue_relationship_deleteAsync(string username, string password, string issue_id, string relationship_id) => _inner.mc_issue_relationship_deleteAsync(username, password, issue_id, relationship_id);
+        public Task<TagDataSearchResult> mc_tag_get_allAsync(string username, string password, string page_number, string per_page) => _inner.mc_tag_get_allAsync(username, password, page_number, per_page);
+        public Task<bool> mc_issue_set_tagsAsync(string username, string password, string issue_id, TagData[] tags) => _inner.mc_issue_set_tagsAsync(username, password, issue_id, tags);
 
         public void Dispose()
         {
