@@ -82,6 +82,52 @@ namespace MantisMcpServer.Tools
                 return $"Error fetching system metadata: {ex.Message}.";
             }
         }
+
+        [McpServerTool]
+        [Description("Lists all saved filters available for the user in a specific project.")]
+        public async Task<string> GetFiltersAsync(
+            [Description("The numeric ID of the project.")] int project_id)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var filters = await client.mc_filter_getAsync(_mantisClient.Username, _mantisClient.Token, project_id.ToString());
+                return JsonSerializer.Serialize(filters, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving filters for project {ProjectId}", project_id);
+                return $"Error retrieving filters: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Retrieves issues matching a specific saved filter ID.")]
+        public async Task<string> GetIssuesByFilterAsync(
+            [Description("The numeric ID of the project.")] int project_id,
+            [Description("The numeric ID of the saved filter.")] int filter_id,
+            [Description("The page number to retrieve (starts at 1).")] int page_number = 1,
+            [Description("Number of issues to return per page (default is 50).")] int per_page = 50)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var issues = await client.mc_filter_get_issuesAsync(
+                    _mantisClient.Username,
+                    _mantisClient.Token,
+                    project_id.ToString(),
+                    filter_id.ToString(),
+                    page_number.ToString(),
+                    per_page.ToString());
+
+                return JsonSerializer.Serialize(issues, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving issues for filter {FilterId} in project {ProjectId}", filter_id, project_id);
+                return $"Error retrieving issues for filter: {ex.Message}";
+            }
+        }
     }
 }
 

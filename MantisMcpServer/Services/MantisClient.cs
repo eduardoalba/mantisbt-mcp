@@ -15,6 +15,14 @@ namespace MantisMcpServer.Services
         Task<ObjectRef[]> mc_enum_prioritiesAsync(string username, string password);
         Task<ObjectRef[]> mc_enum_severitiesAsync(string username, string password);
         Task<ObjectRef[]> mc_enum_resolutionsAsync(string username, string password);
+        
+        // Phase 2: Filters
+        Task<FilterData[]> mc_filter_getAsync(string username, string password, string project_id);
+        Task<IssueData[]> mc_filter_get_issuesAsync(string username, string password, string project_id, string filter_id, string page_number, string per_page);
+        
+        // Phase 2: Attachments
+        Task<byte[]> mc_issue_attachment_getAsync(string username, string password, string issue_attachment_id);
+        Task<string> mc_issue_attachment_addAsync(string username, string password, string issue_id, string name, string file_type, byte[] content);
     }
 
     public class MantisSoapClientWrapper : IMantisSoapClient
@@ -37,6 +45,14 @@ namespace MantisMcpServer.Services
         public Task<ObjectRef[]> mc_enum_prioritiesAsync(string username, string password) => _inner.mc_enum_prioritiesAsync(username, password);
         public Task<ObjectRef[]> mc_enum_severitiesAsync(string username, string password) => _inner.mc_enum_severitiesAsync(username, password);
         public Task<ObjectRef[]> mc_enum_resolutionsAsync(string username, string password) => _inner.mc_enum_resolutionsAsync(username, password);
+
+        // Phase 2: Filters
+        public Task<FilterData[]> mc_filter_getAsync(string username, string password, string project_id) => _inner.mc_filter_getAsync(username, password, project_id);
+        public Task<IssueData[]> mc_filter_get_issuesAsync(string username, string password, string project_id, string filter_id, string page_number, string per_page) => _inner.mc_filter_get_issuesAsync(username, password, project_id, filter_id, page_number, per_page);
+
+        // Phase 2: Attachments
+        public Task<byte[]> mc_issue_attachment_getAsync(string username, string password, string issue_attachment_id) => _inner.mc_issue_attachment_getAsync(username, password, issue_attachment_id);
+        public Task<string> mc_issue_attachment_addAsync(string username, string password, string issue_id, string name, string file_type, byte[] content) => _inner.mc_issue_attachment_addAsync(username, password, issue_id, name, file_type, content);
 
         public void Dispose()
         {

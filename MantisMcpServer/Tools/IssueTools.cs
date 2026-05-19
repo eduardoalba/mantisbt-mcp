@@ -159,6 +159,53 @@ namespace MantisMcpServer.Tools
                 return $"Error updating status: {ex.Message}. Ensure the status ID and issue ID are valid.";
             }
         }
+
+        [McpServerTool]
+        [Description("Downloads the content of an attachment as a Base64 string.")]
+        public async Task<string> GetAttachmentAsync(
+            [Description("The numeric ID of the attachment.")] int attachment_id)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var content = await client.mc_issue_attachment_getAsync(_mantisClient.Username, _mantisClient.Token, attachment_id.ToString());
+                return Convert.ToBase64String(content);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving attachment {AttachmentId}", attachment_id);
+                return $"Error retrieving attachment: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Uploads a file as an attachment to a specific issue.")]
+        public async Task<string> CreateAttachmentAsync(
+            [Description("The numeric ID of the issue.")] int issue_id,
+            [Description("The filename (e.g., 'screenshot.png').")] string name,
+            [Description("The MIME type (e.g., 'image/png').")] string file_type,
+            [Description("The file content encoded in Base64.")] string content_base64)
+        {
+            try
+            {
+                var content = Convert.FromBase64String(content_base64);
+                using var client = _mantisClient.CreateSoapClient();
+                var attachmentId = await client.mc_issue_attachment_addAsync(
+                    _mantisClient.Username, 
+                    _mantisClient.Token, 
+                    issue_id.ToString(), 
+                    name, 
+                    file_type, 
+                    content);
+                
+                return $"Attachment uploaded successfully! ID: {attachmentId}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading attachment for issue {IssueId}", issue_id);
+                return $"Error uploading attachment: {ex.Message}";
+            }
+        }
     }
 }
 
