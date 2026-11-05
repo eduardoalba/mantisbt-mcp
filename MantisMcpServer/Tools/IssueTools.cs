@@ -242,11 +242,12 @@ namespace MantisMcpServer.Tools
                     issue.resolution = new ObjectRef { id = resolution_id.Value.ToString() };
                 }
 
+                // Limpa notas existentes para não reprocessar o histórico nem atualizar last_modified das notas
+                issue.notes = null;
+
                 if (!string.IsNullOrEmpty(note))
                 {
-                    var noteList = issue.notes?.ToList() ?? new List<IssueNoteData>();
-                    noteList.Add(new IssueNoteData { text = note });
-                    issue.notes = noteList.ToArray();
+                    issue.notes = new[] { new IssueNoteData { text = note } };
                 }
 
                 var success = await client.mc_issue_updateAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString(), issue);
@@ -409,6 +410,301 @@ namespace MantisMcpServer.Tools
                 _logger.LogError(ex, "Error uploading attachment for issue {IssueId}", issue_id);
                 return $"Error uploading attachment: {ex.Message}";
             }
+        }
+
+        [McpServerTool]
+        [Description("Deletes a note (comment) from an issue. Use when a note needs to be removed entirely.")]
+        public async Task<string> DeleteNoteAsync(
+            [Description("The numeric ID of the issue containing the note.")] int issue_id,
+            [Description("The numeric ID of the note to delete.")] int note_id)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var success = await client.mc_issue_note_deleteAsync(_mantisClient.Username, _mantisClient.Token, note_id.ToString());
+                return success ? $"Note {note_id} deleted successfully from issue {issue_id}!" : $"Failed to delete note {note_id}.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting note {NoteId} from issue {IssueId}", note_id, issue_id);
+                return $"Error deleting note: {ex.Message}. Check if the note ID is valid.";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Updates custom fields of an existing issue. Provide a JSON object mapping custom field names to their new values (e.g. {\"Backlogs\": \"...\", \"Area\": \"IT\"}). Custom fields not mentioned are preserved.")]
+        public async Task<string> UpdateIssueAsync(
+            [Description("The numeric ID of the issue.")] int issue_id,
+            [Description("JSON object of custom field name/value pairs to set, e.g. {\"Backlogs\": \"item1\\nitem2\"}.")] string custom_fields_json)
+        {
+            try
+            {
+                var updates = JsonSerializer.Deserialize<Dictionary<string, string>>(custom_fields_json)
+                    ?? new Dictionary<string, string>();
+
+                using var client = _mantisClient.CreateSoapClient();
+                var issue = await client.mc_issue_getAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString());
+
+                var existingFields = issue.custom_fields?.ToList() ?? new List<CustomFieldValueForIssueData>();
+                foreach (var kvp in updates)
+                {
+                    var existing = existingFields.FirstOrDefault(f =>
+                        f.field != null && string.Equals(f.field.name, kvp.Key, StringComparison.OrdinalIgnoreCase));
+                    if (existing != null)
+                    {
+                        existing.value = kvp.Value;
+                    }
+                    else
+                    {
+                        existingFields.Add(new CustomFieldValueForIssueData
+                        {
+                            field = new ObjectRef { name = kvp.Key },
+                            value = kvp.Value
+                        });
+                    }
+                }
+                issue.custom_fields = existingFields.ToArray();
+
+                // Limpa notas existentes para não reprocessar o histórico de notas
+                issue.notes = null;
+
+                var success = await client.mc_issue_updateAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString(), issue);
+                return success ? $"Issue {issue_id} custom fields updated successfully!" : $"Failed to update issue {issue_id}.";
+            }
+            catch (JsonException)
+            {
+                return "Error updating issue: 'custom_fields_json' must be a valid JSON object of name/value pairs.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating custom fields of issue {IssueId}", issue_id);
+                return $"Error updating issue: {ex.Message}. Check if the issue ID is valid.";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Updates the text (and optionally visibility) of an existing note (comment) on a MantisBT issue. The existing note metadata (reporter, timestamps) is preserved. If the visibility is not specified, the current visibility is kept.")]
+        public async Task<string> UpdateNoteAsync(
+            [Description("The numeric ID of the issue containing the note.")] int issue_id,
+            [Description("The numeric ID of the note to update.")] int note_id,
+            [Description("The new text content of the note.")] string text,
+            [Description("Whether the note should be private (only visible to authorized users). If not specified, the current visibility is kept.")] bool? is_private = null)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var issue = await client.mc_issue_getAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString());
+                var existing = issue.notes?.FirstOrDefault(n => n.id == note_id.ToString());
+                if (existing == null)
+                {
+                    return $"Note {note_id} not found on issue {issue_id}.";
+                }
+
+                var updated = new IssueNoteData
+                {
+                    id = existing.id,
+                    text = text,
+                    view_state = new ObjectRef
+                    {
+                        id = is_private.HasValue
+                            ? (is_private.Value ? "50" : "10") // 10=public, 50=private
+                            : (existing.view_state?.id ?? "10")
+                    }
+                };
+
+                await client.mc_issue_note_updateAsync(_mantisClient.Username, _mantisClient.Token, updated);
+
+                // Confirm the update actually persisted (the SOAP return can be unreliable).
+                var verify = await client.mc_issue_getAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString());
+                var verified = verify.notes?.FirstOrDefault(n => n.id == note_id.ToString());
+                if (verified != null && string.Equals(verified.text, text, StringComparison.Ordinal))
+                {
+                    return $"Note {note_id} updated successfully on issue {issue_id}!";
+                }
+
+                return $"Failed to update note {note_id} (change did not persist).";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating note {NoteId} on issue {IssueId}", note_id, issue_id);
+                return $"Error updating note: {ex.Message}. Check if the note ID and issue ID are valid.";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Deletes an attachment from an issue.")]
+        public async Task<string> DeleteAttachmentAsync(
+            [Description("The numeric ID of the attachment to delete.")] int attachment_id)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var success = await client.mc_issue_attachment_deleteAsync(_mantisClient.Username, _mantisClient.Token, attachment_id.ToString());
+                return success ? $"Attachment {attachment_id} deleted successfully!" : $"Failed to delete attachment {attachment_id}.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting attachment {AttachmentId}", attachment_id);
+                return $"Error deleting attachment: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Checks whether a specific MantisBT issue exists.")]
+        public async Task<string> IssueExistsAsync(
+            [Description("The numeric ID of the issue.")] int issue_id)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var exists = await client.mc_issue_existsAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString());
+                return exists ? $"Issue {issue_id} exists." : $"Issue {issue_id} does not exist.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking existence of issue {IssueId}", issue_id);
+                return $"Error checking issue: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Retrieves full details of multiple issues in a single call. Provide a comma-separated list of issue IDs (e.g., '123,124,125').")]
+        public async Task<string> GetIssueBatchAsync(
+            [Description("Comma-separated list of issue IDs to retrieve (e.g., '123,124,125').")] string issue_ids)
+        {
+            try
+            {
+                var ids = SplitIds(issue_ids);
+                using var client = _mantisClient.CreateSoapClient();
+                var issues = await client.mc_issues_getAsync(_mantisClient.Username, _mantisClient.Token, ids);
+                return JsonSerializer.Serialize(issues, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving issues in batch");
+                return $"Error retrieving issues: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Retrieves lightweight headers (id, summary, status, priority, etc.) for multiple issues in a single call. Provide a comma-separated list of issue IDs.")]
+        public async Task<string> GetIssueHeadersAsync(
+            [Description("Comma-separated list of issue IDs (e.g., '123,124,125').")] string issue_ids)
+        {
+            try
+            {
+                var ids = SplitIds(issue_ids);
+                using var client = _mantisClient.CreateSoapClient();
+                var headers = await client.mc_issues_get_headerAsync(_mantisClient.Username, _mantisClient.Token, ids);
+                return JsonSerializer.Serialize(headers, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving issue headers in batch");
+                return $"Error retrieving issue headers: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Deletes a MantisBT issue. Warning: this is a destructive and irreversible action.")]
+        public async Task<string> DeleteIssueAsync(
+            [Description("The numeric ID of the issue to delete.")] int issue_id)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var success = await client.mc_issue_deleteAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString());
+                return success ? $"Issue {issue_id} deleted successfully!" : $"Failed to delete issue {issue_id}.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting issue {IssueId}", issue_id);
+                return $"Error deleting issue: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Retrieves the highest (biggest) issue ID for a specific project.")]
+        public async Task<string> GetBiggestIssueIdAsync(
+            [Description("The numeric ID of the project.")] int project_id)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var biggest = await client.mc_issue_get_biggest_idAsync(_mantisClient.Username, _mantisClient.Token, project_id.ToString());
+                return string.IsNullOrEmpty(biggest) || biggest == "0"
+                    ? $"No issues found for project {project_id}."
+                    : $"Biggest issue ID in project {project_id}: {biggest}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving biggest issue ID for project {ProjectId}", project_id);
+                return $"Error retrieving biggest issue ID: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Performs a check-in on an issue, optionally adding a comment and/or marking it as fixed.")]
+        public async Task<string> CheckinIssueAsync(
+            [Description("The numeric ID of the issue.")] int issue_id,
+            [Description("An optional comment to attach during the check-in.")] string comment = "",
+            [Description("Whether to mark the issue as fixed.")] bool mark_fixed = false)
+        {
+            try
+            {
+                using var client = _mantisClient.CreateSoapClient();
+                var success = await client.mc_issue_checkinAsync(_mantisClient.Username, _mantisClient.Token, issue_id.ToString(), comment, mark_fixed);
+                return success ? $"Issue {issue_id} checked in successfully!" : $"Failed to check in issue {issue_id}.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking in issue {IssueId}", issue_id);
+                return $"Error checking in issue: {ex.Message}";
+            }
+        }
+
+        [McpServerTool]
+        [Description("Searches for issues and returns only their numeric IDs, based on a text search string.")]
+        public async Task<string> SearchIssueIdsAsync(
+            [Description("The text to search for in issues (summary, description, notes, etc.).")] string search_text,
+            [Description("Optional numeric ID of the project to limit the search.")] int? project_id = null,
+            [Description("The page number to retrieve (starts at 1).")] int page_number = 1,
+            [Description("Number of results to return per page (default is 50).")] int per_page = 50)
+        {
+            try
+            {
+                var filter = new FilterSearchData
+                {
+                    search = search_text
+                };
+
+                if (project_id.HasValue)
+                {
+                    filter.project_id = new[] { project_id.Value.ToString() };
+                }
+
+                using var client = _mantisClient.CreateSoapClient();
+                var ids = await client.mc_filter_search_issue_idsAsync(
+                    _mantisClient.Username,
+                    _mantisClient.Token,
+                    filter,
+                    page_number.ToString(),
+                    per_page.ToString());
+
+                return ids == null || ids.Length == 0
+                    ? "No issues found."
+                    : JsonSerializer.Serialize(ids, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching issue IDs for text: {SearchText}", search_text);
+                return $"Error searching issue IDs: {ex.Message}";
+            }
+        }
+
+        private static string[] SplitIds(string ids)
+        {
+            return ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
     }
 }

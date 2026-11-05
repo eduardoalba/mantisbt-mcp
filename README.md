@@ -1,17 +1,22 @@
 # MantisBT MCP Server (.NET)
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI agents (like Claude, Gemini, and Codex) to interact with the [Mantis Bug Tracker](https://www.mantisbt.org/) via its SOAP API (MantisConnect).
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI agents
+(like Claude, Gemini, and Codex) to interact with the [Mantis Bug Tracker](https://www.mantisbt.org/)
+via its SOAP API (MantisConnect).
 
-### 📋 Compatibility
+## 📋 Compatibility
+
 - **MantisBT Version:** 2.x or later (tested with latest stable releases).
 - **Protocol:** SOAP (MantisConnect).
 - **Authentication:** Personal Access Token (required for security).
 
 ## 🚀 Features
 
-- **Issue Management:** Read details, search within projects, create new issues, and add notes.
-- **Workflow Control:** Update status and resolution of issues.
-- **Metadata Discovery:** List accessible projects, categories, and system enumeration levels (Status, Priority, Severity, etc.).
+- **Issue Management:** Read details (single or batch), search within projects, create/delete issues, and manage notes (add, edit, delete).
+- **Workflow Control:** Update status and resolution of issues, check-in issues, and manage relationships and tags.
+- **Attachments:** Upload and download issue/project attachments, and delete them.
+- **Project Administration:** Manage versions (list, add, update, delete), categories (create, rename, delete), and look up project IDs by name.
+- **Metadata Discovery:** List accessible projects, categories, and system enumeration levels (Status, Priority, Severity, Projections, ETA, View States, etc.).
 - **AI-Enhanced Search (RAG):** Synchronize projects to a local SQLite database and perform semantic searches using OpenAI embeddings.
 - **Observability (Resources):** Expose server logs and project statistics as MCP Resources for better AI monitoring and context.
 - **Smart DX:** High-quality tool descriptions and error handling tailored for LLM consumption.
@@ -22,19 +27,20 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 - **.NET 10 SDK** (or later) installed.
 - **dotnet-svcutil** tool: `dotnet tool install -g dotnet-svcutil`
 - **MantisBT Access:** A valid URL, Username, and Personal Access Token (API Token).
+
 ## 📦 Installation for Users (Non-Developers)
 
 If you just want to use the MCP server without worrying about code, follow these steps:
 
-1.  **Download the Release:** Go to the [Releases](../../releases) page and download the `MantisMcpServer-Win64.zip` file.
-2.  **Extract:** Unzip the contents to a folder on your computer (e.g., `C:\MantisMCP`).
-3.  **Run the Installer:**
+1. **Download the Release:** Go to the [Releases](../../releases) page and download the `MantisMcpServer-Win64.zip` file.
+2. **Extract:** Unzip the contents to a folder on your computer (e.g., `C:\MantisMCP`).
+3. **Run the Installer:**
     - Right-click the `install.ps1` file and select **"Run with PowerShell"**.
     - *Note: If you see a security warning about unsigned scripts, run the following command in PowerShell first:* `Unblock-File .\install.ps1`
     - Alternatively, run: `powershell -ExecutionPolicy Bypass -File .\install.ps1`
     - The installer will skip the developer steps and ask for your Mantis URL, Username, and API Token.
     - Choose which AI tool you want to register (Claude, Gemini, or Codex).
-4.  **Restart your AI Tool:** Close and reopen Claude Desktop or your CLI to see the new tools.
+4. **Restart your AI Tool:** Close and reopen Claude Desktop or your CLI to see the new tools.
 
 ---
 

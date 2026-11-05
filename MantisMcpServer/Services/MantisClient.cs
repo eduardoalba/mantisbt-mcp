@@ -48,6 +48,36 @@ namespace MantisMcpServer.Services
         Task<ObjectRef[]> mc_enum_access_levelsAsync(string username, string password);
         Task<ObjectRef[]> mc_enum_project_statusAsync(string username, string password);
         Task<ObjectRef[]> mc_enum_reproducibilitiesAsync(string username, string password);
+
+        // Phase 5: Note update/delete, attachments, batch reads and issue utilities
+        Task<bool> mc_issue_note_updateAsync(string username, string password, IssueNoteData note);
+        Task<bool> mc_issue_note_deleteAsync(string username, string password, string issue_note_id);
+        Task<bool> mc_issue_attachment_deleteAsync(string username, string password, string issue_attachment_id);
+        Task<bool> mc_issue_deleteAsync(string username, string password, string issue_id);
+        Task<bool> mc_issue_existsAsync(string username, string password, string issue_id);
+        Task<IssueData[]> mc_issues_getAsync(string username, string password, string[] issue_ids);
+        Task<IssueHeaderData[]> mc_issues_get_headerAsync(string username, string password, string[] issue_ids);
+        Task<string> mc_issue_get_biggest_idAsync(string username, string password, string project_id);
+        Task<bool> mc_issue_checkinAsync(string username, string password, string issue_id, string comment, bool isFixed);
+        Task<string[]> mc_filter_search_issue_idsAsync(string username, string password, FilterSearchData filter, string page_number, string per_page);
+
+        // Phase 6: Project versions, categories and remaining enums
+        Task<string> mc_project_get_id_from_nameAsync(string username, string password, string project_name);
+        Task<ProjectVersionData[]> mc_project_get_versionsAsync(string username, string password, string project_id);
+        Task<ProjectVersionData[]> mc_project_get_released_versionsAsync(string username, string password, string project_id);
+        Task<ProjectVersionData[]> mc_project_get_unreleased_versionsAsync(string username, string password, string project_id);
+        Task<string> mc_project_version_addAsync(string username, string password, ProjectVersionData version);
+        Task<bool> mc_project_version_updateAsync(string username, string password, string version_id, ProjectVersionData version);
+        Task<bool> mc_project_version_deleteAsync(string username, string password, string version_id);
+        Task<string> mc_project_add_categoryAsync(string username, string password, string project_id, string p_category_name);
+        Task<string> mc_project_delete_categoryAsync(string username, string password, string project_id, string p_category_name);
+        Task<string> mc_project_rename_category_by_nameAsync(string username, string password, string project_id, string p_category_name, string p_category_name_new, string p_assigned_to);
+        Task<ObjectRef[]> mc_enum_projectionsAsync(string username, string password);
+        Task<ObjectRef[]> mc_enum_etasAsync(string username, string password);
+        Task<ObjectRef[]> mc_enum_project_view_statesAsync(string username, string password);
+        Task<ObjectRef[]> mc_enum_view_statesAsync(string username, string password);
+        Task<ObjectRef[]> mc_enum_custom_field_typesAsync(string username, string password);
+        Task<string> mc_enum_getAsync(string username, string password, string enumeration);
     }
 
     public class MantisSoapClientWrapper : IMantisSoapClient
@@ -104,6 +134,36 @@ namespace MantisMcpServer.Services
         public Task<ObjectRef[]> mc_enum_project_statusAsync(string username, string password) => _inner.mc_enum_project_statusAsync(username, password);
         public Task<ObjectRef[]> mc_enum_reproducibilitiesAsync(string username, string password) => _inner.mc_enum_reproducibilitiesAsync(username, password);
 
+        // Phase 5: Note update/delete, attachments, batch reads and issue utilities
+        public Task<bool> mc_issue_note_updateAsync(string username, string password, IssueNoteData note) => _inner.mc_issue_note_updateAsync(username, password, note);
+        public Task<bool> mc_issue_note_deleteAsync(string username, string password, string issue_note_id) => _inner.mc_issue_note_deleteAsync(username, password, issue_note_id);
+        public Task<bool> mc_issue_attachment_deleteAsync(string username, string password, string issue_attachment_id) => _inner.mc_issue_attachment_deleteAsync(username, password, issue_attachment_id);
+        public Task<bool> mc_issue_deleteAsync(string username, string password, string issue_id) => _inner.mc_issue_deleteAsync(username, password, issue_id);
+        public Task<bool> mc_issue_existsAsync(string username, string password, string issue_id) => _inner.mc_issue_existsAsync(username, password, issue_id);
+        public Task<IssueData[]> mc_issues_getAsync(string username, string password, string[] issue_ids) => _inner.mc_issues_getAsync(username, password, issue_ids);
+        public Task<IssueHeaderData[]> mc_issues_get_headerAsync(string username, string password, string[] issue_ids) => _inner.mc_issues_get_headerAsync(username, password, issue_ids);
+        public Task<string> mc_issue_get_biggest_idAsync(string username, string password, string project_id) => _inner.mc_issue_get_biggest_idAsync(username, password, project_id);
+        public Task<bool> mc_issue_checkinAsync(string username, string password, string issue_id, string comment, bool isFixed) => _inner.mc_issue_checkinAsync(username, password, issue_id, comment, isFixed);
+        public Task<string[]> mc_filter_search_issue_idsAsync(string username, string password, FilterSearchData filter, string page_number, string per_page) => _inner.mc_filter_search_issue_idsAsync(username, password, filter, page_number, per_page);
+
+        // Phase 6: Project versions, categories and remaining enums
+        public Task<string> mc_project_get_id_from_nameAsync(string username, string password, string project_name) => _inner.mc_project_get_id_from_nameAsync(username, password, project_name);
+        public Task<ProjectVersionData[]> mc_project_get_versionsAsync(string username, string password, string project_id) => _inner.mc_project_get_versionsAsync(username, password, project_id);
+        public Task<ProjectVersionData[]> mc_project_get_released_versionsAsync(string username, string password, string project_id) => _inner.mc_project_get_released_versionsAsync(username, password, project_id);
+        public Task<ProjectVersionData[]> mc_project_get_unreleased_versionsAsync(string username, string password, string project_id) => _inner.mc_project_get_unreleased_versionsAsync(username, password, project_id);
+        public Task<string> mc_project_version_addAsync(string username, string password, ProjectVersionData version) => _inner.mc_project_version_addAsync(username, password, version);
+        public Task<bool> mc_project_version_updateAsync(string username, string password, string version_id, ProjectVersionData version) => _inner.mc_project_version_updateAsync(username, password, version_id, version);
+        public Task<bool> mc_project_version_deleteAsync(string username, string password, string version_id) => _inner.mc_project_version_deleteAsync(username, password, version_id);
+        public Task<string> mc_project_add_categoryAsync(string username, string password, string project_id, string p_category_name) => _inner.mc_project_add_categoryAsync(username, password, project_id, p_category_name);
+        public Task<string> mc_project_delete_categoryAsync(string username, string password, string project_id, string p_category_name) => _inner.mc_project_delete_categoryAsync(username, password, project_id, p_category_name);
+        public Task<string> mc_project_rename_category_by_nameAsync(string username, string password, string project_id, string p_category_name, string p_category_name_new, string p_assigned_to) => _inner.mc_project_rename_category_by_nameAsync(username, password, project_id, p_category_name, p_category_name_new, p_assigned_to);
+        public Task<ObjectRef[]> mc_enum_projectionsAsync(string username, string password) => _inner.mc_enum_projectionsAsync(username, password);
+        public Task<ObjectRef[]> mc_enum_etasAsync(string username, string password) => _inner.mc_enum_etasAsync(username, password);
+        public Task<ObjectRef[]> mc_enum_project_view_statesAsync(string username, string password) => _inner.mc_enum_project_view_statesAsync(username, password);
+        public Task<ObjectRef[]> mc_enum_view_statesAsync(string username, string password) => _inner.mc_enum_view_statesAsync(username, password);
+        public Task<ObjectRef[]> mc_enum_custom_field_typesAsync(string username, string password) => _inner.mc_enum_custom_field_typesAsync(username, password);
+        public Task<string> mc_enum_getAsync(string username, string password, string enumeration) => _inner.mc_enum_getAsync(username, password, enumeration);
+
         public void Dispose()
         {
             if (_inner is IDisposable d) d.Dispose();
@@ -137,9 +197,21 @@ namespace MantisMcpServer.Services
         {
             string soapEndpoint = _url.TrimEnd('/') + "/api/soap/mantisconnect.php";
             
-            var client = new MantisConnectPortTypeClient(
-                MantisConnectPortTypeClient.EndpointConfiguration.MantisConnectPort,
-                soapEndpoint);
+            var binding = new System.ServiceModel.BasicHttpBinding
+            {
+                MaxBufferSize = int.MaxValue,
+                ReaderQuotas = System.Xml.XmlDictionaryReaderQuotas.Max,
+                MaxReceivedMessageSize = int.MaxValue,
+                AllowCookies = true
+            };
+
+            if (soapEndpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                binding.Security.Mode = System.ServiceModel.BasicHttpSecurityMode.Transport;
+            }
+
+            var endpointAddress = new System.ServiceModel.EndpointAddress(soapEndpoint);
+            var client = new MantisConnectPortTypeClient(binding, endpointAddress);
             
             return new MantisSoapClientWrapper(client);
         }
